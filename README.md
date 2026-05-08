@@ -6,6 +6,7 @@ Web Serial Studio Smart Bearing is a browser-based telemetry dashboard for viewi
 
 - Real-time dashboards with plots, gauges, bars, tables, and other widgets
 - Multiple transport layers: `Serial`, `WebSocket`, `MQTT`
+- UDP device streams through a local WebSocket bridge
 - STM32 binary payload parsing and quick plotting modes
 - Project-style configuration workflow in the browser
 - No backend required for deployment
@@ -65,8 +66,25 @@ https://<your-github-username>.github.io/<your-repository-name>/
 
 - `Serial` mode requires a browser with Web Serial API support, such as recent Chrome or Edge
 - `MQTT` in the browser requires a `ws://` or `wss://` broker endpoint
+- `UDP` requires the local bridge script because browsers cannot open raw UDP sockets
 - `GitHub Pages` is HTTPS-hosted, so browser APIs that require secure context will work there
 - `WebSocket` endpoints should usually use `wss://` when the site is served over HTTPS
+
+## UDP Bridge
+
+Install the bridge dependency:
+
+```bash
+pip install websockets
+```
+
+Start the bridge before choosing `UDP` in the web app:
+
+```bash
+python scripts/udp_ws_bridge.py --local-port 4000 --remote-host 192.168.1.252 --remote-port 1030
+```
+
+The web app connects to `ws://localhost:8765`, while the bridge listens for UDP on the configured local port and forwards datagrams to the dashboard.
 
 ## Notes for GitHub Publishing
 

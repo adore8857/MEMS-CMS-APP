@@ -34,6 +34,7 @@ const translations = {
       ble: '蓝牙',
       network: '网络',
       mqtt: 'MQTT',
+      udp: 'UDP',
       demoSim: '演示模拟',
       stopSim: '停止模拟',
       setupPanel: '设置面板',
@@ -76,6 +77,7 @@ const translations = {
       serialConfiguration: '串口配置',
       websocketConfiguration: 'WebSocket 配置',
       mqttConfiguration: 'MQTT 配置',
+      udpConfiguration: 'UDP 配置',
       bluetoothConfiguration: '蓝牙配置',
       baudRate: '波特率',
       dataBits: '数据位',
@@ -99,6 +101,13 @@ const translations = {
       browserEndpoint: '浏览器 WebSocket 端点',
       waitingForHost: '等待输入主机...',
       mqttHelper: '浏览器中的 MQTT 必须通过 WebSocket 端口连接。原始 TCP 端口例如 1883 不能直接在网页中使用，除非 Broker 在该端口额外暴露了 WS/WSS。',
+      bridgeUrl: '桥接地址',
+      remoteIp: '远端 IP',
+      remotePort: '远端端口',
+      localIp: '本地 IP',
+      localPort: '本地端口',
+      udpBridge: 'UDP WebSocket 桥接',
+      udpHelper: '浏览器不能直接打开 UDP 端口，请先运行桥接脚本，再在网页中连接 UDP。',
       subscribePublish: '发布 + 订阅',
       subscribeOnly: '仅订阅',
       publishOnly: '仅发布',
@@ -228,6 +237,7 @@ const translations = {
       ble: 'BLE',
       network: 'Network',
       mqtt: 'MQTT',
+      udp: 'UDP',
       demoSim: 'Demo Sim',
       stopSim: 'Stop Sim',
       setupPanel: 'Setup Panel',
@@ -270,6 +280,7 @@ const translations = {
       serialConfiguration: 'Serial Configuration',
       websocketConfiguration: 'WebSocket Configuration',
       mqttConfiguration: 'MQTT Configuration',
+      udpConfiguration: 'UDP Configuration',
       bluetoothConfiguration: 'Bluetooth Configuration',
       baudRate: 'Baud Rate',
       dataBits: 'Data Bits',
@@ -293,6 +304,13 @@ const translations = {
       browserEndpoint: 'Browser WebSocket Endpoint',
       waitingForHost: 'Waiting for host...',
       mqttHelper: 'Browser MQTT must connect through a WebSocket listener. A raw TCP MQTT port like 1883 will fail unless your broker exposes MQTT over WS/WSS on that port.',
+      bridgeUrl: 'Bridge URL',
+      remoteIp: 'Remote IP',
+      remotePort: 'Remote Port',
+      localIp: 'Local IP',
+      localPort: 'Local Port',
+      udpBridge: 'UDP WebSocket Bridge',
+      udpHelper: 'Browsers cannot open raw UDP sockets. Start the bridge script first, then connect UDP from the web app.',
       subscribePublish: 'Publish + Subscribe',
       subscribeOnly: 'Subscribe Only',
       publishOnly: 'Publish Only',
@@ -416,6 +434,8 @@ export function busLabel(bus, locale = appState.locale) {
       return 'WebSocket';
     case BusType.MQTT:
       return 'MQTT';
+    case BusType.UDP:
+      return 'UDP';
     default:
       return bus;
   }

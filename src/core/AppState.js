@@ -14,7 +14,8 @@ export const BusType = {
   Serial: 'Serial',
   Bluetooth: 'Bluetooth',
   WebSocket: 'WebSocket',
-  MQTT: 'MQTT'
+  MQTT: 'MQTT',
+  UDP: 'UDP'
 };
 
 export const ConnectionState = {
@@ -41,6 +42,16 @@ function createDefaultMqttConfig() {
     clientId: 'web-serial-studio-' + Math.random().toString(36).substr(2, 8),
     useSSL: true,
     brokerUrl: 'wss://broker.emqx.io:8084/mqtt'
+  };
+}
+
+function createDefaultUdpConfig() {
+  return {
+    bridgeUrl: 'ws://localhost:8765',
+    remoteHost: '192.168.1.252',
+    remotePort: 1030,
+    localHost: '0.0.0.0',
+    localPort: 4000
   };
 }
 
@@ -79,6 +90,10 @@ class AppState {
     // MQTT config
     this._mqttConfig = createDefaultMqttConfig();
 
+    // UDP config. Browsers cannot open raw UDP sockets, so UDP traffic is
+    // bridged through a local WebSocket helper.
+    this._udpConfig = createDefaultUdpConfig();
+
     // Frame config
     this._frameConfig = {
       separator: ',',
@@ -107,6 +122,7 @@ class AppState {
   get serialConfig() { return { ...this._serialConfig }; }
   get wsConfig() { return { ...this._wsConfig }; }
   get mqttConfig() { return { ...this._mqttConfig }; }
+  get udpConfig() { return { ...this._udpConfig }; }
   get frameConfig() { return { ...this._frameConfig }; }
   get frameCount() { return this._frameCount; }
   get dataRate() { return this._dataRate; }
@@ -188,6 +204,10 @@ class AppState {
     Object.assign(this._mqttConfig, cfg);
     this._saveSettings();
   }
+  updateUdpConfig(cfg) {
+    Object.assign(this._udpConfig, cfg);
+    this._saveSettings();
+  }
   updateFrameConfig(cfg) {
     Object.assign(this._frameConfig, cfg);
     eventBus.emit('state:frameConfigChanged', this._frameConfig);
@@ -206,6 +226,7 @@ class AppState {
         serialConfig: this._serialConfig,
         wsConfig: this._wsConfig,
         mqttConfig: this._mqttConfig,
+        udpConfig: this._udpConfig,
         frameConfig: this._frameConfig
       };
       localStorage.setItem('webSerialStudio_settings', JSON.stringify(s));
@@ -226,6 +247,7 @@ class AppState {
       if (s.serialConfig) Object.assign(this._serialConfig, s.serialConfig);
       if (s.wsConfig) Object.assign(this._wsConfig, s.wsConfig);
       if (s.mqttConfig) Object.assign(this._mqttConfig, createDefaultMqttConfig(), s.mqttConfig);
+      if (s.udpConfig) Object.assign(this._udpConfig, createDefaultUdpConfig(), s.udpConfig);
       if (s.frameConfig) Object.assign(this._frameConfig, s.frameConfig);
     } catch (e) { /* ignore */ }
   }

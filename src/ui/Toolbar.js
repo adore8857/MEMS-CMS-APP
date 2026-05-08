@@ -74,6 +74,10 @@ export class Toolbar {
                   <div class="toolbar-btn-icon icon-mqtt" aria-hidden="true"></div>
                   <div class="toolbar-btn-label">${t('toolbar.mqtt')}</div>
                 </button>
+                <button class="toolbar-btn toolbar-btn-compact driver-btn ${appState.busType === BusType.UDP ? 'active' : ''}" data-bus="UDP" title="${t('toolbar.udp')}">
+                  <div class="toolbar-btn-icon icon-network" aria-hidden="true"></div>
+                  <div class="toolbar-btn-label">${t('toolbar.udp')}</div>
+                </button>
               </div>
             </div>
             <div class="toolbar-section-label">${t('toolbar.interface')}</div>

@@ -8,6 +8,7 @@ import { FrameParser } from '../core/FrameParser.js?v=protocol-plugin-20260427-1
 import { SerialDriver } from './SerialDriver.js';
 import { WebSocketDriver } from './WebSocketDriver.js';
 import { MqttDriver } from './MqttDriver.js';
+import { UdpDriver } from './UdpDriver.js';
 
 export class ConnectionManager {
   constructor() {
@@ -32,6 +33,8 @@ export class ConnectionManager {
         this._driver = new WebSocketDriver();
       } else if (bus === BusType.MQTT) {
         this._driver = new MqttDriver();
+      } else if (bus === BusType.UDP) {
+        this._driver = new UdpDriver();
       } else {
         // Fallback to simulated driver for demo
         this._driver = null;

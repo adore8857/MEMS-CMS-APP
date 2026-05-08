@@ -77,6 +77,7 @@ export class Sidebar {
                 <button class="btn bus-btn ${appState.busType === BusType.Bluetooth ? 'btn-primary' : ''}" data-bus="Bluetooth">${t('toolbar.ble')}</button>
                 <button class="btn bus-btn ${appState.busType === BusType.WebSocket ? 'btn-primary' : ''}" data-bus="WebSocket">WebSocket</button>
                 <button class="btn bus-btn ${appState.busType === BusType.MQTT ? 'btn-primary' : ''}" data-bus="MQTT">MQTT</button>
+                <button class="btn bus-btn ${appState.busType === BusType.UDP ? 'btn-primary' : ''}" data-bus="UDP">UDP</button>
               </div>
             </div>
           </div>
@@ -384,6 +385,55 @@ export class Sidebar {
       });
   }
 
+  _buildUdpConfigPanel(cfg) {
+    return `
+      <div class="mqtt-config-grid">
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.bridgeUrl')}</div>
+          <input class="form-input" id="drv-udp-bridge" value="${cfg.bridgeUrl || 'ws://localhost:8765'}" placeholder="ws://localhost:8765">
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.remoteIp')}</div>
+          <input class="form-input" id="drv-udp-remote-host" value="${cfg.remoteHost || ''}" placeholder="192.168.1.252">
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.remotePort')}</div>
+          <input class="form-input" id="drv-udp-remote-port" type="number" min="1" max="65535" value="${cfg.remotePort || 1030}">
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.localIp')}</div>
+          <input class="form-input" id="drv-udp-local-host" value="${cfg.localHost || '0.0.0.0'}" placeholder="0.0.0.0">
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.localPort')}</div>
+          <input class="form-input" id="drv-udp-local-port" type="number" min="1" max="65535" value="${cfg.localPort || 4000}">
+        </div>
+      </div>
+      <div class="mqtt-helper-card">
+        <div class="mqtt-helper-title">${t('sidebar.udpBridge')}</div>
+        <div class="mqtt-helper-url mono">python scripts/udp_ws_bridge.py --local-port ${cfg.localPort || 4000} --remote-host ${cfg.remoteHost || '192.168.1.252'} --remote-port ${cfg.remotePort || 1030}</div>
+        <div class="mqtt-helper-note">${t('sidebar.udpHelper')}</div>
+      </div>`;
+  }
+
+  _bindUdpConfigPanel(panel) {
+    const update = () => {
+      appState.updateUdpConfig({
+        bridgeUrl: panel.querySelector('#drv-udp-bridge')?.value?.trim() || 'ws://localhost:8765',
+        remoteHost: panel.querySelector('#drv-udp-remote-host')?.value?.trim() || '',
+        remotePort: Math.max(1, parseInt(panel.querySelector('#drv-udp-remote-port')?.value, 10) || 1030),
+        localHost: panel.querySelector('#drv-udp-local-host')?.value?.trim() || '0.0.0.0',
+        localPort: Math.max(1, parseInt(panel.querySelector('#drv-udp-local-port')?.value, 10) || 4000)
+      });
+    };
+
+    panel.querySelectorAll('#drv-udp-bridge, #drv-udp-remote-host, #drv-udp-remote-port, #drv-udp-local-host, #drv-udp-local-port')
+      .forEach((el) => {
+        const eventName = el.type === 'number' ? 'change' : 'input';
+        el.addEventListener(eventName, update);
+      });
+  }
+
   _updateDriverPanel() {
     const panel = this._container.querySelector('#driver-panel');
     if (!panel) return;
@@ -429,6 +479,8 @@ export class Sidebar {
       </div>`;
     } else if (bus === BusType.MQTT) {
       html = `<div class="sidebar-section-label">${t('sidebar.mqttConfiguration')}</div><div class="driver-config">${this._buildMqttConfigPanel(appState.mqttConfig)}</div>`;
+    } else if (bus === BusType.UDP) {
+      html = `<div class="sidebar-section-label">${t('sidebar.udpConfiguration')}</div><div class="driver-config">${this._buildUdpConfigPanel(appState.udpConfig)}</div>`;
     } else if (bus === BusType.Bluetooth) {
       html = `<div class="sidebar-section-label">${t('sidebar.bluetoothConfiguration')}</div><div class="driver-config">
         <div style="color:var(--text-muted);font-size:var(--font-size-xs);line-height:1.6;">
@@ -457,6 +509,8 @@ export class Sidebar {
       panel.querySelector('#drv-ws-url')?.addEventListener('change', (e) => appState.updateWsConfig({ url: e.target.value }));
     } else if (bus === BusType.MQTT) {
       this._bindMqttConfigPanel(panel);
+    } else if (bus === BusType.UDP) {
+      this._bindUdpConfigPanel(panel);
     }
   }
 
