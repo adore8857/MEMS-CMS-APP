@@ -16,6 +16,8 @@ export class PlotWidget extends WidgetBase {
     this._data = this._datasetIndices.map(() => []);
     this._labels = [];
     this._paused = false;
+    this._lastFrameDatasets = [];
+    this._chartRetryTimer = null;
     this._frameHandler = (frame) => this._onFrame(frame);
     this._syncVisibleYScale = () => {
       this._updateVisibleYScale();
@@ -29,6 +31,24 @@ export class PlotWidget extends WidgetBase {
 
   _render(body) {
     body.style.padding = '8px';
+    if (!window.Chart) {
+      body.innerHTML = '<div class="text-muted" style="display:flex;align-items:center;justify-content:center;height:100%;font-size:var(--font-size-sm)">Chart.js is loading or unavailable</div>';
+      if (!this._chartRetryTimer) {
+        this._chartRetryTimer = setInterval(() => {
+          if (this._destroyed) return;
+          if (window.Chart) {
+            clearInterval(this._chartRetryTimer);
+            this._chartRetryTimer = null;
+            body.innerHTML = '';
+            this._render(body);
+            this._updateVisibleYScale();
+            this._chart?.update('none');
+          }
+        }, 300);
+      }
+      return;
+    }
+
     const canvas = document.createElement('canvas');
     canvas.style.width = '100%';
     canvas.style.height = '100%';
@@ -78,7 +98,7 @@ export class PlotWidget extends WidgetBase {
             display: this._datasetIndices.length > 1,
             labels: {
               color: legendColor,
-              font: { size: 11, family: "'Inter', sans-serif", weight: '600' },
+              font: { size: 13, family: "'Times New Roman', serif", weight: '600' },
               usePointStyle: true,
               pointStyle: 'line',
               pointStyleWidth: 30,
@@ -93,8 +113,8 @@ export class PlotWidget extends WidgetBase {
             borderWidth: 1,
             titleColor: themeStyles.getPropertyValue('--chart-tooltip-title').trim() || '#94a3b8',
             bodyColor: themeStyles.getPropertyValue('--chart-tooltip-body').trim() || '#f1f5f9',
-            titleFont: { family: "'Inter', sans-serif", size: 11, weight: '600' },
-            bodyFont: { family: "'JetBrains Mono', monospace", size: 11 },
+            titleFont: { family: "'Times New Roman', serif", size: 12, weight: '600' },
+            bodyFont: { family: "Consolas, 'Courier New', monospace", size: 12 },
             cornerRadius: 10,
             padding: 10,
             boxPadding: 4,
@@ -135,7 +155,7 @@ export class PlotWidget extends WidgetBase {
             },
             ticks: {
               color: tickColor,
-              font: { size: 11, family: "'JetBrains Mono', monospace", weight: '500' },
+              font: { size: 12, family: "Consolas, 'Courier New', monospace", weight: '500' },
               maxTicksLimit: 6,
               padding: 8
             },
@@ -167,6 +187,7 @@ export class PlotWidget extends WidgetBase {
 
     this._datasetIndices.forEach((idx, i) => {
       const ds = frame.datasets?.[idx];
+      this._lastFrameDatasets[i] = ds || null;
       if (ds && ds.buffer && Array.isArray(ds.buffer)) {
         this._data[i].push(...ds.buffer);
       } else {
@@ -191,6 +212,7 @@ export class PlotWidget extends WidgetBase {
 
   reset() {
     this._data = this._datasetIndices.map(() => []);
+    this._lastFrameDatasets = [];
     this._labels = [];
     if (this._chart) {
       if (typeof this._chart.resetZoom === 'function') this._chart.resetZoom();
@@ -217,10 +239,15 @@ export class PlotWidget extends WidgetBase {
       : fallbackEnd;
 
     const visible = [];
-    this._data.forEach((series) => {
+    this._data.forEach((series, seriesIndex) => {
+      const frameDataset = this._lastFrameDatasets[seriesIndex];
+      const preferWindowValue = !frameDataset?.buffer && Number.isFinite(frameDataset?.value);
       for (let i = start; i <= end && i < series.length; i += 1) {
         const value = series[i];
         if (Number.isFinite(value)) visible.push(value);
+      }
+      if (!isViewingHistory && preferWindowValue) {
+        visible.push(frameDataset.value);
       }
     });
 
@@ -234,11 +261,12 @@ export class PlotWidget extends WidgetBase {
     let max = Math.max(...visible);
 
     if (min === max) {
-      const padding = Math.max(Math.abs(min) * 0.2, 2);
+      const padding = Math.max(Math.abs(min) * 0.08, 0.0001);
       min -= padding;
       max += padding;
     } else {
-      const padding = Math.max((max - min) * 0.18, 2);
+      const maxAbs = Math.max(Math.abs(min), Math.abs(max), 0.0001);
+      const padding = Math.max((max - min) * 0.18, maxAbs * 0.02, 0.0001);
       min -= padding;
       max += padding;
     }
@@ -251,6 +279,10 @@ export class PlotWidget extends WidgetBase {
     if (this._chart) {
       this._chart.destroy();
       this._chart = null;
+    }
+    if (this._chartRetryTimer) {
+      clearInterval(this._chartRetryTimer);
+      this._chartRetryTimer = null;
     }
     super.destroy();
   }

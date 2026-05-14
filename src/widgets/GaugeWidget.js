@@ -115,7 +115,7 @@ export class GaugeWidget extends WidgetBase {
     }
 
     ctx.fillStyle = scaleText;
-    ctx.font = "500 10px 'JetBrains Mono', monospace";
+    ctx.font = "500 12px Consolas, 'Courier New', monospace";
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const labelValues = [this._min, (this._min + this._max) / 2, this._max];

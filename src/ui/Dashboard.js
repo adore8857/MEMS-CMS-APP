@@ -4,7 +4,7 @@
 import { eventBus } from '../core/EventBus.js';
 import { appState } from '../core/AppState.js';
 import { t } from '../core/i18n.js';
-import { PlotWidget } from '../widgets/PlotWidget.js';
+import { PlotWidget } from '../widgets/PlotWidget.js?v=font-load-demo-20260513-1';
 import { GaugeWidget } from '../widgets/GaugeWidget.js';
 import { BarWidget } from '../widgets/BarWidget.js';
 import { CompassWidget } from '../widgets/CompassWidget.js';
@@ -21,7 +21,7 @@ function buildDefaultLayout(width) {
         title: 'Temperature & Humidity',
         icon: 'PLOT',
         datasetIndices: [0, 1],
-        datasetLabels: ['Temperature (C)', 'Humidity (%)'],
+        datasetLabels: ['Temperature (°C)', 'Humidity (%)'],
         colorOffset: 0,
         x: 0, y: 0, w: col2, h: 280
       }
@@ -44,7 +44,7 @@ function buildDefaultLayout(width) {
       config: {
         title: 'Temperature',
         icon: 'TMP',
-        datasetIndex: 0, min: -20, max: 80, units: 'C', colorIdx: 0,
+        datasetIndex: 0, min: -20, max: 80, units: '°C', colorIdx: 0,
         x: 0, y: 288, w: col, h: 260
       }
     },
@@ -102,7 +102,7 @@ function buildDefaultLayout(width) {
         title: t('dashboard.allData'),
         icon: 'GRID',
         datasets: [
-          { index: 0, title: 'Temperature', units: 'C' },
+          { index: 0, title: 'Temperature', units: '°C' },
           { index: 1, title: 'Humidity', units: '%' },
           { index: 2, title: 'Pressure', units: 'hPa' },
           { index: 3, title: 'Accel X', units: 'm/s2' },
@@ -172,8 +172,8 @@ export class Dashboard {
             [t('dashboard.featureActions'), t('dashboard.featureActionsDesc')]
           ].map(([title, desc]) => `
             <div style="background:var(--dashboard-empty-card-bg);border:1px solid var(--dashboard-empty-card-border);border-radius:12px;padding:14px 16px;max-width:220px;text-align:left;box-shadow:var(--shadow-sm)">
-              <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px">${title}</div>
-              <div style="font-size:11px;color:var(--text-muted);line-height:1.4">${desc}</div>
+              <div style="font-size:var(--font-size-sm);font-weight:600;color:var(--text-secondary);margin-bottom:4px">${title}</div>
+              <div style="font-size:var(--font-size-xs);color:var(--text-muted);line-height:1.4">${desc}</div>
             </div>`).join('')}
         </div>
         <div style="margin-top:20px;display:flex;gap:8px">
@@ -254,6 +254,18 @@ export class Dashboard {
 
     const datasets = [];
     (project.groups || []).forEach((g) => g.datasets.forEach((d) => datasets.push(d)));
+    const isTemperatureDataset = (d) => {
+      const title = String(d.title || '').toLowerCase();
+      const units = String(d.units || '').toLowerCase();
+      return title.includes('temp') || units.includes('°c') || units === 'c';
+    };
+    const plotDatasets = datasets.filter((d) => {
+      const widget = String(d.widget || '').toLowerCase();
+      const isGaugeLike = widget === 'gauge' || widget === 'gauges';
+      const isTemperature = isTemperatureDataset(d);
+      return d.plot !== false && d.graph !== false && !isGaugeLike && !isTemperature;
+    });
+    const temperatureDatasets = datasets.filter((d) => isTemperatureDataset(d));
     const gaugeDatasets = [];
     (project.groups || []).forEach((group) => {
       const groupForcesGauge = group.widget === 'Gauges';
@@ -267,12 +279,12 @@ export class Dashboard {
     const width = (this._grid?.clientWidth || 1100) - 8;
     let y = 0;
 
-    if (datasets.length > 0) {
+    if (plotDatasets.length > 0) {
       const mp = new PlotWidget({
         title: `${project.title} - ${t('dashboard.overview')}`,
         icon: 'PLOT',
-        datasetIndices: datasets.map((d) => d.index),
-        datasetLabels: datasets.map((d) => d.title + (d.units ? ` (${d.units})` : '')),
+        datasetIndices: plotDatasets.map((d) => d.index),
+        datasetLabels: plotDatasets.map((d) => d.title + (d.units ? ` (${d.units})` : '')),
         x: 0, y, w: width, h: 280
       });
       mp.mount(this._canvas);
@@ -280,7 +292,26 @@ export class Dashboard {
       y += 288;
     }
 
-    let gx = 0;
+    if (temperatureDatasets.length > 0) {
+      const tempPlot = new PlotWidget({
+        title: 'Temperature Trend',
+        icon: 'PLOT',
+        datasetIndices: temperatureDatasets.map((d) => d.index),
+        datasetLabels: temperatureDatasets.map((d) => d.title + (d.units ? ` (${d.units})` : '')),
+        colorOffset: 3,
+        x: 0,
+        y,
+        w: Math.floor(width * 0.52),
+        h: 260
+      });
+      tempPlot.mount(this._canvas);
+      this._widgets.push(tempPlot);
+    }
+
+    let gx = temperatureDatasets.length > 0 ? Math.floor(width * 0.52) + 8 : 0;
+    const gaugeWidth = temperatureDatasets.length > 0
+      ? Math.max(320, width - gx)
+      : Math.floor(width / 3);
     gaugeDatasets.forEach((ds, i) => {
       const gauge = new GaugeWidget({
         title: ds.title,
@@ -291,13 +322,13 @@ export class Dashboard {
         colorIdx: i,
         x: gx,
         y,
-        w: Math.floor(width / 3),
+        w: gaugeWidth,
         h: 260
       });
       gauge.mount(this._canvas);
       this._widgets.push(gauge);
-      gx += Math.floor(width / 3);
-      if (gx + Math.floor(width / 3) > width) {
+      gx += gaugeWidth;
+      if (gx + gaugeWidth > width) {
         gx = 0;
         y += 268;
       }

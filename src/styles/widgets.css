@@ -6,9 +6,9 @@
 .widget-header { display:flex;align-items:center;justify-content:space-between;padding:var(--space-2) var(--space-3);background:var(--widget-header);border-bottom:1px solid var(--border-subtle);flex-shrink:0;min-height:var(--widget-header-height);cursor:grab }
 .widget-header:active { cursor:grabbing }
 .widget-title { font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--text-secondary);display:flex;align-items:center;gap:var(--space-2);letter-spacing:.01em;user-select:none }
-.widget-title-icon { font-size:11px;color:var(--accent-blue) }
+.widget-title-icon { font-size:var(--font-size-xs);color:var(--accent-blue) }
 .widget-actions { display:flex;align-items:center;gap:2px }
-.widget-action-btn { width:22px;height:22px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-muted);cursor:pointer;border-radius:var(--radius-sm);font-size:11px;transition:all var(--transition-fast) }
+.widget-action-btn { width:24px;height:24px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-muted);cursor:pointer;border-radius:var(--radius-sm);font-size:var(--font-size-xs);transition:all var(--transition-fast) }
 .widget-action-btn:hover { background:rgba(148,163,184,.1);color:var(--text-primary) }
 .widget-body { flex:1;padding:var(--space-2);overflow:hidden;position:relative;display:flex;flex-direction:column }
 .widget-body canvas { width:100%!important;height:100%!important }

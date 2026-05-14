@@ -105,8 +105,8 @@ export class Toolbar {
 
           <div class="toolbar-section">
             <div class="toolbar-section-content" style="flex-direction:column;align-items:flex-start;gap:6px;min-width:100px">
-              <div style="font-size:10px;color:var(--text-muted)">${t('toolbar.framesPerSecond')}: <span id="stat-rate" style="color:var(--accent-green);font-family:var(--font-mono)">0</span></div>
-              <div style="font-size:10px;color:var(--text-muted)">${t('toolbar.total')}: <span id="stat-count" style="color:var(--accent-blue);font-family:var(--font-mono)">0</span></div>
+              <div style="font-size:var(--font-size-xs);color:var(--text-muted)">${t('toolbar.framesPerSecond')}: <span id="stat-rate" style="color:var(--accent-green);font-family:var(--font-mono)">0</span></div>
+              <div style="font-size:var(--font-size-xs);color:var(--text-muted)">${t('toolbar.total')}: <span id="stat-count" style="color:var(--accent-blue);font-family:var(--font-mono)">0</span></div>
             </div>
             <div class="toolbar-section-label">${t('toolbar.statistics')}</div>
           </div>

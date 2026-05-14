@@ -111,6 +111,8 @@ export class ProjectModel {
           datasets: (g.datasets || []).map((d, i) => {
             const min = d.min ?? d.widgetMin ?? d.plotMin ?? d.fftMin ?? 0;
             const max = d.max ?? d.widgetMax ?? d.plotMax ?? d.fftMax ?? 100;
+            const defaultPlot = ['Plot', 'MultiPlot'].includes(groupWidget);
+            const plot = d.plot ?? d.graph ?? defaultPlot;
             return {
               title: d.title || `Dataset ${i + 1}`,
               index: d.index ?? i,
@@ -121,7 +123,8 @@ export class ProjectModel {
               alarm: d.alarm ?? d.alarmHigh ?? 0,
               led: d.led ?? false,
               fft: d.fft ?? false,
-              plot: d.plot ?? ['Plot', 'MultiPlot'].includes(groupWidget),
+              plot,
+              graph: d.graph ?? plot,
               bar: d.bar ?? groupWidget === 'Bar',
               gauge: d.gauge ?? groupWidget === 'Gauges',
               compass: d.compass ?? groupWidget === 'Compass'

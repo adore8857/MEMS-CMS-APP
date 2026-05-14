@@ -42,6 +42,28 @@ const STM32_BEARING_FRAMES = {
     TEMP_MODE: 'ADS124S08_RTD',
     TAIL_OFFSET: 1466,
     MAX_BUFFER_WITHOUT_TAIL: 8192
+  },
+  gearbox: {
+    PARSER: 'gearbox',
+    FULL_SIZE: null,
+    MIN_FULL_SIZE: 22,
+    PAYLOAD_SIZE: null,
+    HEADER_LEN_OFFSET: 4,
+    CHANNEL_COUNT_OFFSET: 5,
+    SAMPLE_BYTES_OFFSET: 6,
+    PROTO_ID_OFFSET: 7,
+    SAMPLE_RATE_OFFSET: 14,
+    PAYLOAD_LEN_OFFSET: 18,
+    VALID_SAMPLES_OFFSET: 20,
+    PAYLOAD_OFFSET: 32,
+    TEMPERATURE1_OFFSET: 32,
+    TEMPERATURE2_OFFSET: 35,
+    VIBRATION_OFFSET: 38,
+    CHECKSUM_SIZE: 1,
+    DEFAULT_SAMPLES: 512,
+    DEFAULT_CHANNEL_COUNT: 4,
+    SAMPLE_BYTES: 3,
+    MAX_BUFFER_WITHOUT_TAIL: 65536
   }
 };
 
@@ -116,7 +138,7 @@ export class FrameParser {
     if (!this._isSTM32Protocol() || appState.busType !== 'MQTT') return false;
 
     const payloadSize = this._stm32PayloadSize();
-    if (newData.length >= payloadSize && newData.length % payloadSize === 0) {
+    if (payloadSize && newData.length >= payloadSize && newData.length % payloadSize === 0) {
       for (let offset = 0; offset < newData.length; offset += payloadSize) {
         const payload = newData.slice(offset, offset + payloadSize);
         this._emitSTM32BearingFrame(payload, true, payload.length);
@@ -171,9 +193,9 @@ export class FrameParser {
   _drainMqttBinaryFrames() {
     const frameConfig = this._stm32FrameConfig();
     const payloadSize = frameConfig.PAYLOAD_SIZE;
-    const minFrameSize = payloadSize + 4;
+    const minFrameSize = frameConfig.MIN_FULL_SIZE || ((payloadSize || 0) + 4);
 
-    while (this._mqttBinaryBuffer.length >= payloadSize) {
+    while (this._mqttBinaryBuffer.length >= minFrameSize) {
       let headerPos = -1;
       for (let i = 0; i <= this._mqttBinaryBuffer.length - 2; i++) {
         if (this._mqttBinaryBuffer[i] === 0x5A && this._mqttBinaryBuffer[i + 1] === 0xA5) {
@@ -205,6 +227,13 @@ export class FrameParser {
         this._emitSTM32BearingFrame(frame, false, frame.length);
         this._mqttBinaryBuffer = this._mqttBinaryBuffer.slice(expectedFrameSize);
         continue;
+      }
+
+      if (!payloadSize) {
+        if (this._mqttBinaryBuffer.length > frameConfig.MAX_BUFFER_WITHOUT_TAIL) {
+          this._mqttBinaryBuffer = this._mqttBinaryBuffer.slice(-1);
+        }
+        return;
       }
 
       const aligned = this._alignMqttPayloadStream();
@@ -250,6 +279,7 @@ export class FrameParser {
     const buf = this._mqttBinaryBuffer;
     const frameConfig = this._stm32FrameConfig();
     const payloadSize = frameConfig.PAYLOAD_SIZE;
+    if (!payloadSize) return false;
     if (start < 0 || start + payloadSize > buf.length) {
       return false;
     }
@@ -319,12 +349,18 @@ export class FrameParser {
 
   _isSTM32Protocol() {
     const mode = appState.operationMode;
+    const protocol = this._projectProtocol();
     return mode === OperationMode.STM32Binary ||
-      (mode === OperationMode.ProjectFile && this._projectProtocol().startsWith('stm32binary'));
+      (mode === OperationMode.ProjectFile && (
+        protocol.startsWith('stm32binary') ||
+        protocol === 'gearboxbinary'
+      ));
   }
 
   _stm32FrameConfig() {
-    return this._projectProtocol() === 'stm32binaryv2'
+    const protocol = this._projectProtocol();
+    if (protocol === 'gearboxbinary') return STM32_BEARING_FRAMES.gearbox;
+    return protocol === 'stm32binaryv2'
       ? STM32_BEARING_FRAMES.v2
       : STM32_BEARING_FRAMES.legacy;
   }
@@ -345,7 +381,7 @@ export class FrameParser {
     const HEADER_1 = 0xA5;
     const TAIL_0 = 0xDD;
     const TAIL_1 = 0xEE;
-    const EXPECTED_MIN_SIZE = frameConfig.FULL_SIZE;
+    const EXPECTED_MIN_SIZE = frameConfig.MIN_FULL_SIZE || frameConfig.FULL_SIZE;
 
     while (this._buffer.length >= 4) {
       // Find header
@@ -407,6 +443,9 @@ export class FrameParser {
 
   _stm32FrameSizeFromHeader(buffer, start) {
     const frameConfig = this._stm32FrameConfig();
+    if (frameConfig.PARSER === 'gearbox') {
+      return this._gearboxFrameSizeFromHeader(buffer, start);
+    }
     if (start + 3 >= buffer.length || frameConfig.LENGTH_FIELD_BIAS === null) {
       return frameConfig.FULL_SIZE;
     }
@@ -415,6 +454,35 @@ export class FrameParser {
     if (frameSize === frameConfig.FULL_SIZE) return frameSize;
     if (frameSize === frameConfig.LEGACY_LENGTH_FIELD_FULL_SIZE) return frameConfig.FULL_SIZE;
     return frameConfig.FULL_SIZE;
+  }
+
+  _gearboxFrameSizeFromHeader(buffer, start) {
+    const frameConfig = STM32_BEARING_FRAMES.gearbox;
+    const payloadLenOffset = start + frameConfig.PAYLOAD_LEN_OFFSET;
+    const validSamplesOffset = start + frameConfig.VALID_SAMPLES_OFFSET;
+
+    if (validSamplesOffset + 1 >= buffer.length) {
+      return frameConfig.MIN_FULL_SIZE;
+    }
+
+    const payloadLen = buffer[payloadLenOffset] | (buffer[payloadLenOffset + 1] << 8);
+    const validSamples = buffer[validSamplesOffset] | (buffer[validSamplesOffset + 1] << 8);
+    const channelCount = buffer[start + frameConfig.CHANNEL_COUNT_OFFSET] || frameConfig.DEFAULT_CHANNEL_COUNT;
+    const sampleBytes = buffer[start + frameConfig.SAMPLE_BYTES_OFFSET] || frameConfig.SAMPLE_BYTES;
+    const expectedPayloadLen = 6 + (validSamples * channelCount * sampleBytes);
+    const trustedPayloadLen = payloadLen > 0 ? payloadLen : expectedPayloadLen;
+    const frameSize = frameConfig.PAYLOAD_OFFSET + trustedPayloadLen + frameConfig.CHECKSUM_SIZE + 2;
+
+    if (frameSize >= 41 && frameSize <= frameConfig.MAX_BUFFER_WITHOUT_TAIL) {
+      return frameSize;
+    }
+
+    const defaultPayloadLen = 6 + (
+      frameConfig.DEFAULT_SAMPLES *
+      frameConfig.DEFAULT_CHANNEL_COUNT *
+      frameConfig.SAMPLE_BYTES
+    );
+    return frameConfig.PAYLOAD_OFFSET + defaultPayloadLen + frameConfig.CHECKSUM_SIZE + 2;
   }
 
   _stm32FrameSizeFromPayload(buffer, start) {
@@ -429,6 +497,11 @@ export class FrameParser {
 
   _emitSTM32BearingFrame(frameData, payloadOnly = false, frameSize = frameData.length) {
     const frameConfig = this._stm32FrameConfig();
+    if (frameConfig.PARSER === 'gearbox') {
+      this._emitGearboxFrame(frameData, payloadOnly, frameSize);
+      return;
+    }
+
     const requiredSize = payloadOnly ? frameConfig.PAYLOAD_SIZE : frameConfig.FULL_SIZE;
     if (frameData.length < requiredSize) return;
 
@@ -534,6 +607,76 @@ export class FrameParser {
       title: 'STM32 Bearing Data',
       datasets,
       raw: (payloadOnly ? 'Binary Payload' : 'Binary Frame') + ` (${frameSize} bytes)`,
+      timestamp: Date.now()
+    });
+  }
+
+  _emitGearboxFrame(frameData, payloadOnly = false, frameSize = frameData.length) {
+    if (payloadOnly) return;
+
+    const frameConfig = STM32_BEARING_FRAMES.gearbox;
+    if (frameData.length < frameConfig.PAYLOAD_OFFSET + 9) return;
+
+    const readUInt16LE = (offset) => frameData[offset] | (frameData[offset + 1] << 8);
+    const readUInt32LE = (offset) =>
+      (frameData[offset] |
+        (frameData[offset + 1] << 8) |
+        (frameData[offset + 2] << 16) |
+        (frameData[offset + 3] << 24)) >>> 0;
+    const readSigned24BE = (offset) => {
+      let val = (frameData[offset] << 16) | (frameData[offset + 1] << 8) | frameData[offset + 2];
+      if (val & 0x800000) val -= 0x1000000;
+      return val;
+    };
+    const convertRtdCodeToTemperature = (code) => {
+      const A = 3.9083e-3;
+      const B = -5.775e-7;
+      const scale = 0.0002980232 / 100;
+      const discriminant = (A * A) - (4 * B * (1 - (code * scale)));
+      if (discriminant < 0) return NaN;
+      return (-A + Math.sqrt(discriminant)) / (2 * B);
+    };
+
+    const payloadLen = readUInt16LE(frameConfig.PAYLOAD_LEN_OFFSET);
+    const validSamples = readUInt16LE(frameConfig.VALID_SAMPLES_OFFSET);
+    const channelCount = frameData[frameConfig.CHANNEL_COUNT_OFFSET] || frameConfig.DEFAULT_CHANNEL_COUNT;
+    const sampleBytes = frameData[frameConfig.SAMPLE_BYTES_OFFSET] || frameConfig.SAMPLE_BYTES;
+    const samplesFromPayload = Math.floor(Math.max(0, payloadLen - 6) / Math.max(1, channelCount * sampleBytes));
+    const sampleCount = Math.min(validSamples || samplesFromPayload, samplesFromPayload);
+    const requiredEnd = frameConfig.VIBRATION_OFFSET + (channelCount * sampleCount * sampleBytes);
+
+    if (sampleBytes !== 3 || channelCount < 4 || sampleCount <= 0 || frameData.length < requiredEnd + 3) {
+      return;
+    }
+
+    const temp1 = convertRtdCodeToTemperature(readSigned24BE(frameConfig.TEMPERATURE1_OFFSET));
+    const temp2 = convertRtdCodeToTemperature(readSigned24BE(frameConfig.TEMPERATURE2_OFFSET));
+
+    const vibration3 = [];
+    const vibration4 = [];
+    const vibration3Offset = frameConfig.VIBRATION_OFFSET + (2 * sampleCount * sampleBytes);
+    const vibration4Offset = frameConfig.VIBRATION_OFFSET + (3 * sampleCount * sampleBytes);
+
+    for (let i = 0; i < sampleCount; i++) {
+      vibration3.push(readSigned24BE(vibration3Offset + (i * sampleBytes)) * 2.3841858e-6);
+      vibration4.push(readSigned24BE(vibration4Offset + (i * sampleBytes)) * 1.1920929e-5);
+    }
+
+    this._emitFrame({
+      title: 'Gearbox Monitoring Data',
+      datasets: [
+        { title: 'Temperature 1', value: temp1, index: 0 },
+        { title: 'Temperature 2', value: temp2, index: 1 },
+        { title: 'Low-frequency Vibration', value: vibration3[vibration3.length - 1], index: 2, buffer: vibration3 },
+        { title: 'General Vibration', value: vibration4[vibration4.length - 1], index: 3, buffer: vibration4 }
+      ],
+      meta: {
+        sequence: readUInt32LE(10),
+        sampleRate: readUInt32LE(frameConfig.SAMPLE_RATE_OFFSET),
+        validSamples: sampleCount,
+        payloadLength: payloadLen
+      },
+      raw: `Gearbox Binary Frame (${frameSize} bytes, ${sampleCount} samples)`,
       timestamp: Date.now()
     });
   }

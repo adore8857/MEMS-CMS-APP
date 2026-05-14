@@ -33,7 +33,7 @@ function emitSampleProjectFrame() {
       { title: 'Strain 2', value: strain2[strain2.length - 1], index: 2, units: 'V', buffer: strain2 },
       { title: 'Strain 3', value: strain3[strain3.length - 1], index: 3, units: 'V', buffer: strain3 },
       { title: 'ADC Temp', value: 1.284, index: 4, units: 'V' },
-      { title: 'TMP117', value: 27.6, index: 5, units: 'C' }
+      { title: 'TMP117', value: 27.6, index: 5, units: '°C' }
     ],
     raw: 'Doc capture sample frame',
     timestamp: Date.now()

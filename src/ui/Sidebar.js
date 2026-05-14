@@ -87,7 +87,7 @@ export class Sidebar {
           <div class="sidebar-section" id="json-editor-section" style="display:none">
             <div class="sidebar-section-label">${t('sidebar.jsonProjectEditor')}</div>
             <div class="json-editor-panel">
-              <div style="font-size:10px;color:var(--text-muted);line-height:1.5;margin-bottom:4px">
+              <div style="font-size:var(--font-size-xs);color:var(--text-muted);line-height:1.5;margin-bottom:4px">
                 ${t('sidebar.jsonEditorHint')}
               </div>
               <textarea class="json-editor-textarea" id="json-schema-editor" spellcheck="false" rows="10">${JSON.stringify({
@@ -97,7 +97,7 @@ export class Sidebar {
       t: 'Sensors',
       w: 'multiplot',
       d: [
-        { t: 'Temperature', v: 0, u: 'C', g: true, b: true, min: -20, max: 80 },
+        { t: 'Temperature', v: 0, u: '°C', g: true, b: true, min: -20, max: 80 },
         { t: 'Humidity', v: 0, u: '%', g: false, b: true, min: 0, max: 100 }
       ]
     }
@@ -106,13 +106,13 @@ export class Sidebar {
               <div style="display:flex;align-items:center;justify-content:space-between">
                 <span class="json-editor-status valid" id="json-status">OK ${t('sidebar.validJson')}</span>
                 <div style="display:flex;gap:4px">
-                  <button class="btn" id="btn-json-load" style="font-size:11px;padding:3px 8px">${t('sidebar.loadJson')}</button>
-                  <button class="btn btn-primary" id="btn-json-apply" style="font-size:11px;padding:3px 8px">${t('sidebar.apply')}</button>
+                  <button class="btn" id="btn-json-load" style="font-size:var(--font-size-xs);padding:3px 8px">${t('sidebar.loadJson')}</button>
+                  <button class="btn btn-primary" id="btn-json-apply" style="font-size:var(--font-size-xs);padding:3px 8px">${t('sidebar.apply')}</button>
                 </div>
               </div>
-              <div style="font-size:10px;color:var(--text-muted);margin-top:4px">
+              <div style="font-size:var(--font-size-xs);color:var(--text-muted);margin-top:4px">
                 <strong style="color:var(--text-secondary)">${t('sidebar.lastReceivedJson')}</strong>
-                <div id="json-last-received" style="color:var(--accent-green);font-family:var(--font-mono);font-size:10px;max-height:80px;overflow-y:auto;margin-top:2px;word-break:break-all">${this._lastReceivedJSON || t('sidebar.none')}</div>
+                <div id="json-last-received" style="color:var(--accent-green);font-family:var(--font-mono);font-size:var(--font-size-xs);max-height:80px;overflow-y:auto;margin-top:2px;word-break:break-all">${this._lastReceivedJSON || t('sidebar.none')}</div>
               </div>
             </div>
           </div>

@@ -75,7 +75,7 @@ export class CompassWidget extends WidgetBase {
       const tx = cx + (r - 14) * Math.cos(rad);
       const ty = cy + (r - 14) * Math.sin(rad);
       ctx.fillStyle = color;
-      ctx.font = `bold 12px "Inter", sans-serif`;
+      ctx.font = `bold 12px "Times New Roman", serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(label, tx, ty);
