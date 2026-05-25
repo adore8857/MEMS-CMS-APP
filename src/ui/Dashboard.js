@@ -4,12 +4,12 @@
 import { eventBus } from '../core/EventBus.js';
 import { appState } from '../core/AppState.js';
 import { t } from '../core/i18n.js';
-import { PlotWidget } from '../widgets/PlotWidget.js?v=plot-live-x-fix-20260514-1';
-import { GaugeWidget } from '../widgets/GaugeWidget.js';
-import { BarWidget } from '../widgets/BarWidget.js';
-import { CompassWidget } from '../widgets/CompassWidget.js';
+import { PlotWidget } from '../widgets/PlotWidget.js?v=axis-units-20260525-1';
+import { GaugeWidget } from '../widgets/GaugeWidget.js?v=axis-units-20260525-1';
+import { BarWidget } from '../widgets/BarWidget.js?v=axis-units-20260525-1';
+import { CompassWidget } from '../widgets/CompassWidget.js?v=axis-units-20260525-1';
 import { LedWidget } from '../widgets/LedWidget.js?v=dashboard-editor-fix-20260514-1';
-import { FftWidget } from '../widgets/FftWidget.js?v=dashboard-editor-fix-20260514-1';
+import { FftWidget } from '../widgets/FftWidget.js?v=fft-analysis-20260525-1';
 import { DataGridWidget } from '../widgets/DataGridWidget.js';
 import { AccelWidget } from '../widgets/AccelWidget.js';
 
@@ -47,6 +47,7 @@ function buildDefaultLayout(width) {
         icon: 'PLOT',
         datasetIndices: [0, 1],
         datasetLabels: ['Temperature (°C)', 'Humidity (%)'],
+        datasetUnits: ['°C', '%'],
         colorOffset: 0,
         x: 0, y: 0, w: col2, h: 280
       }
@@ -117,6 +118,7 @@ function buildDefaultLayout(width) {
         icon: 'PLOT',
         datasetIndices: [2],
         datasetLabels: ['Pressure (hPa)'],
+        datasetUnits: ['hPa'],
         colorOffset: 2,
         x: col2, y: 556, w: col, h: 280
       }
@@ -338,6 +340,7 @@ export class Dashboard {
           icon: 'PLOT',
           datasetIndices: plotDatasets.map((d) => d.index),
           datasetLabels: plotDatasets.map(datasetLabel),
+          datasetUnits: plotDatasets.map((d) => d.units || ''),
           yMin: range.yMin,
           yMax: range.yMax,
           x: 0, y, w: mainWidth, h: plotHeight
@@ -351,6 +354,7 @@ export class Dashboard {
           icon: 'PLOT',
           datasetIndices: temperatureDatasets.map((d) => d.index),
           datasetLabels: temperatureDatasets.map(datasetLabel),
+          datasetUnits: temperatureDatasets.map((d) => d.units || ''),
           colorOffset: 3,
           yMin: range.yMin,
           yMax: range.yMax,
@@ -419,6 +423,7 @@ export class Dashboard {
       addFlowWidget(({ x, y: widgetY, w, h }) => new CompassWidget({
         title: ds.title,
         datasetIndex: ds.index,
+        units: ds.units,
         x,
         y: widgetY,
         w,

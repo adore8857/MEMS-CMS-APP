@@ -3,8 +3,9 @@ import { appState, BusType, OperationMode } from './AppState.js';
 const translations = {
   'zh-CN': {
     app: {
-      brandTitle: 'Serial Studio',
-      brandSubtitle: '网页版'
+      brandTitle: 'MEMS-CMS',
+      brandSubtitle: 'MEMS Condition Monitoring System',
+      brandDescription: 'MEMS\u5b9e\u9a8c\u5ba4\u72b6\u6001\u68c0\u6d4b\u7cfb\u7edf'
     },
     common: {
       save: '保存',
@@ -206,8 +207,9 @@ const translations = {
   },
   en: {
     app: {
-      brandTitle: 'Serial Studio',
-      brandSubtitle: 'Web Edition'
+      brandTitle: 'MEMS-CMS',
+      brandSubtitle: 'MEMS Condition Monitoring System',
+      brandDescription: 'MEMS\u5b9e\u9a8c\u5ba4\u72b6\u6001\u68c0\u6d4b\u7cfb\u7edf'
     },
     common: {
       save: 'Save',

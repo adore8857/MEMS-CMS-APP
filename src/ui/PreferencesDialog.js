@@ -3,7 +3,7 @@
  */
 import { eventBus } from '../core/EventBus.js';
 import { appState } from '../core/AppState.js';
-import { applyTheme, t } from '../core/i18n.js?v=csv-autosave-20260424-1';
+import { applyTheme, t } from '../core/i18n.js?v=mems-cms-brand-20260525-2';
 import { csvSessionManager } from '../core/CsvSessionManager.js';
 
 export class PreferencesDialog {
@@ -130,7 +130,7 @@ export class PreferencesDialog {
           <div class="editor-form-section">
             <div class="editor-form-section-title">${t('preferences.about')}</div>
             <div style="font-size:12px;color:var(--text-muted);line-height:1.8">
-              <div><strong style="color:var(--text-secondary)">Web Serial Studio</strong> - v1.0.0</div>
+              <div><strong style="color:var(--text-secondary)">MEMS-CMS</strong> - v1.0.0</div>
               <div>${t('preferences.aboutIntro')}</div>
               <div style="margin-top:8px">${t('preferences.aboutSupports')}</div>
               <div>${t('preferences.aboutWidgets')}</div>

@@ -63,7 +63,7 @@ export class BarWidget extends WidgetBase {
     this._values = this._datasets.map(() => 0);
     this._items.forEach(item => {
       item.fill.style.width = '0%';
-      item.valueEl.textContent = '0';
+      item.valueEl.textContent = '0' + (item.ds.units ? ` ${item.ds.units}` : '');
     });
   }
 }

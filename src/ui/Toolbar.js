@@ -3,7 +3,7 @@
  */
 import { eventBus } from '../core/EventBus.js';
 import { appState, BusType } from '../core/AppState.js';
-import { t } from '../core/i18n.js?v=csv-autosave-20260424-1';
+import { t } from '../core/i18n.js?v=mems-cms-brand-20260525-2';
 import { csvSessionManager } from '../core/CsvSessionManager.js';
 
 export class Toolbar {
@@ -23,10 +23,11 @@ export class Toolbar {
     this._container.innerHTML = `
       <div class="toolbar">
         <div class="toolbar-brand">
-          <div class="toolbar-brand-icon">SS</div>
+          <img class="toolbar-brand-icon" src="src/assets/neu-seal.png" alt="Northeastern University emblem">
           <div class="toolbar-brand-text">
             <div class="toolbar-brand-title">${t('app.brandTitle')}</div>
             <div class="toolbar-brand-subtitle">${t('app.brandSubtitle')}</div>
+            <div class="toolbar-brand-subtitle">${t('app.brandDescription')}</div>
           </div>
         </div>
 

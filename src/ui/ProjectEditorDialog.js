@@ -97,6 +97,9 @@ const DATASET_WIDGETS = ['Bar', 'Gauge', 'Plot', 'Compass', 'DataGrid'];
 const FRAME_DETECTIONS = ['EndDelimiterOnly', 'StartAndEndDelimiter', 'NoDelimiters'];
 const FIELD_TYPES = ['uint8', 'int8', 'uint16', 'int16', 'uint24', 'int24', 'uint32', 'int32', 'float32', 'float64'];
 const BYTE_ORDERS = ['LE', 'BE'];
+const FFT_POINTS = ['128', '256', '512', '1024'];
+const FFT_WINDOWS = ['Hann', 'None'];
+const FFT_MAGNITUDE_MODES = ['linear', 'db'];
 
 function extendProtocolLabels(labels, locale) {
   const zh = locale === 'zh-CN';
@@ -125,7 +128,17 @@ function extendProtocolLabels(labels, locale) {
     fieldCount: zh ? '\u6570\u91cf' : 'Count',
     fieldEndian: zh ? '\u5b57\u8282\u5e8f' : 'Endian',
     noFields: zh ? '\u5c1a\u672a\u5b9a\u4e49\u5b57\u6bb5' : 'No fields defined yet.',
-    none: zh ? '\u65e0' : 'None'
+    none: zh ? '\u65e0' : 'None',
+    fftSettings: zh ? 'FFT \u8bbe\u7f6e' : 'FFT Settings',
+    fftSampleRate: zh ? '\u56fa\u5b9a\u91c7\u6837\u7387 (Hz)' : 'Fixed Sample Rate (Hz)',
+    fftSampleRateField: zh ? '\u91c7\u6837\u7387\u5b57\u6bb5' : 'Sample Rate Field',
+    fftPoints: zh ? 'FFT \u70b9\u6570' : 'FFT Points',
+    fftWindow: zh ? '\u7a97\u51fd\u6570' : 'Window',
+    fftMagnitudeMode: zh ? '\u5e45\u503c\u663e\u793a' : 'Magnitude Display',
+    fftAmplitudeUnit: zh ? '\u5e45\u503c\u5355\u4f4d' : 'Amplitude Unit',
+    fftHelp: zh
+      ? '\u91c7\u6837\u7387\u5b57\u6bb5\u4f18\u5148\u4e8e\u56fa\u5b9a\u91c7\u6837\u7387\uff1b\u586b\u5199\u540e FFT \u6a2a\u8f74\u5c06\u4ee5 Hz \u663e\u793a\u3002dB \u4e3a\u76f8\u5bf9 1 \u5355\u4f4d\u7684\u5e45\u503c\u3002'
+      : 'Sample rate field overrides the fixed rate. With a rate, the FFT axis displays Hz. dB is relative to 1 amplitude unit.'
   };
 }
 
@@ -312,6 +325,12 @@ export class ProjectEditorDialog {
         alarm: 0,
         led: false,
         fft: false,
+        fftSampleRate: 0,
+        fftSampleRateField: '',
+        fftPoints: 128,
+        fftWindow: 'Hann',
+        fftMagnitudeMode: 'linear',
+        fftAmplitudeUnit: '',
         plot: true,
         bar: true,
         gauge: false,
@@ -493,7 +512,9 @@ export class ProjectEditorDialog {
         index: Number(dataset.index) || 0,
         title: dataset.title || `Dataset ${Number(dataset.index) || 0}`,
         sourceField: dataset.sourceField,
-        formula: dataset.formula || 'raw'
+        formula: dataset.formula || 'raw',
+        fftSampleRate: Number(dataset.fftSampleRate) > 0 ? Number(dataset.fftSampleRate) : 0,
+        fftSampleRateField: dataset.fftSampleRateField || ''
       }));
 
     return `function parse(frame) {
@@ -568,6 +589,9 @@ export class ProjectEditorDialog {
     const value = Array.isArray(result) ? result[result.length - 1] : result;
     const dataset = { index: def.index, title: def.title, value };
     if (Array.isArray(result)) dataset.buffer = result;
+    const fieldSampleRate = Number(fields[def.fftSampleRateField]);
+    const sampleRate = Number.isFinite(fieldSampleRate) && fieldSampleRate > 0 ? fieldSampleRate : Number(def.fftSampleRate);
+    if (Number.isFinite(sampleRate) && sampleRate > 0) dataset.sampleRate = sampleRate;
     return dataset;
   });
   return { title: ${JSON.stringify(project.title || 'Project Data')}, datasets };
@@ -695,6 +719,20 @@ export class ProjectEditorDialog {
           ${this._renderCheckboxField(this._labels.led, 'led', !!selected.led)}
           ${this._renderCheckboxField(this._labels.fft, 'fft', !!selected.fft)}
           ${this._renderCheckboxField(this._labels.compass, 'compass', !!selected.compass)}
+        </div>
+      </div>
+      <div class="editor-form-section">
+        <div class="editor-form-section-title">${this._labels.fftSettings}</div>
+        <div class="editor-form-grid">
+          ${this._renderNumberField(this._labels.fftSampleRate, 'fftSampleRate', selected.fftSampleRate ?? 0)}
+          ${this._renderFieldSelect(this._labels.fftSampleRateField, 'fftSampleRateField', selected.fftSampleRateField || '')}
+          ${this._renderSelectField(this._labels.fftPoints, 'fftPoints', String(selected.fftPoints || 128), FFT_POINTS)}
+          ${this._renderSelectField(this._labels.fftWindow, 'fftWindow', selected.fftWindow || 'Hann', FFT_WINDOWS)}
+          ${this._renderSelectField(this._labels.fftMagnitudeMode, 'fftMagnitudeMode', selected.fftMagnitudeMode || 'linear', FFT_MAGNITUDE_MODES)}
+          ${this._renderTextField(this._labels.fftAmplitudeUnit, 'fftAmplitudeUnit', selected.fftAmplitudeUnit || selected.units || '')}
+        </div>
+        <div style="font-size:var(--font-size-xs);color:var(--text-muted);line-height:1.5">
+          ${this._labels.fftHelp}
         </div>
       </div>`;
   }

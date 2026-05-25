@@ -251,7 +251,10 @@ export class FrameParser {
           units: dataset.units ?? configured?.units ?? '',
           index,
           value: typeof dataset.value === 'number' ? dataset.value : parseFloat(dataset.value) || 0,
-          ...(Array.isArray(dataset.buffer) ? { buffer: dataset.buffer } : {})
+          ...(Array.isArray(dataset.buffer) ? { buffer: dataset.buffer } : {}),
+          ...(Number.isFinite(Number(dataset.sampleRate)) && Number(dataset.sampleRate) > 0
+            ? { sampleRate: Number(dataset.sampleRate) }
+            : {})
         };
       });
 

@@ -9,6 +9,7 @@ export class CompassWidget extends WidgetBase {
     super({ title: config.title || 'Compass', icon: '🧭', ...config });
     this._heading = 0;
     this._datasetIndex = config.datasetIndex ?? 6;
+    this._units = config.units || 'deg';
     this._canvas = null;
     this._ctx = null;
     this._valueEl = null;
@@ -20,7 +21,7 @@ export class CompassWidget extends WidgetBase {
     body.innerHTML = `
       <div class="compass-container">
         <canvas class="compass-canvas" width="200" height="200"></canvas>
-        <div class="compass-value">0°</div>
+        <div class="compass-value">0 ${this._units}</div>
       </div>`;
     this._canvas = body.querySelector('canvas');
     this._ctx = this._canvas.getContext('2d');
@@ -123,7 +124,7 @@ export class CompassWidget extends WidgetBase {
     ctx.fillStyle = '#f1f5f9';
     ctx.fill();
 
-    if (this._valueEl) this._valueEl.textContent = heading.toFixed(1) + '°';
+    if (this._valueEl) this._valueEl.textContent = heading.toFixed(1) + ` ${this._units}`;
   }
 
   reset() { this._heading = 0; this._draw(0); }

@@ -350,30 +350,35 @@ export class Sidebar {
 
   _bindMqttConfigPanel(panel) {
     const update = () => {
+      const useSSL = !!panel.querySelector('#drv-mqtt-ssl')?.checked;
+      const rawPort = parseInt(panel.querySelector('#drv-mqtt-port')?.value, 10);
+      const port = Number.isInteger(rawPort) && rawPort >= 1 && rawPort <= 65535
+        ? rawPort
+        : (useSSL ? 8084 : 8083);
       const next = {
         version: panel.querySelector('#drv-mqtt-version')?.value || '3.1.1',
         mode: panel.querySelector('#drv-mqtt-mode')?.value || 'PubSub',
         qos: parseInt(panel.querySelector('#drv-mqtt-qos')?.value, 10) || 0,
         keepalive: Math.max(5, parseInt(panel.querySelector('#drv-mqtt-keepalive')?.value, 10) || 60),
         host: panel.querySelector('#drv-mqtt-host')?.value?.trim() || '',
-        port: Math.max(1, parseInt(panel.querySelector('#drv-mqtt-port')?.value, 10) || 0),
+        port,
         topic: panel.querySelector('#drv-mqtt-topic')?.value?.trim() || '',
         path: panel.querySelector('#drv-mqtt-path')?.value?.trim() || '/mqtt',
         username: panel.querySelector('#drv-mqtt-user')?.value || '',
         password: panel.querySelector('#drv-mqtt-pass')?.value || '',
         clientId: panel.querySelector('#drv-mqtt-clientid')?.value?.trim() || '',
-        useSSL: !!panel.querySelector('#drv-mqtt-ssl')?.checked,
+        useSSL,
         clean: !!panel.querySelector('#drv-mqtt-clean')?.checked,
         retain: !!panel.querySelector('#drv-mqtt-retain')?.checked
       };
 
-      const effectivePort = next.port || (next.useSSL ? 8084 : 8083);
       const effectivePath = next.path.startsWith('/') ? next.path : `/${next.path}`;
-      next.port = effectivePort;
       next.path = effectivePath;
-      next.brokerUrl = next.host ? `${next.useSSL ? 'wss' : 'ws'}://${next.host}:${effectivePort}${effectivePath}` : '';
+      next.brokerUrl = next.host ? `${next.useSSL ? 'wss' : 'ws'}://${next.host}:${next.port}${effectivePath}` : '';
       appState.updateMqttConfig(next);
 
+      const portInput = panel.querySelector('#drv-mqtt-port');
+      if (portInput && portInput.value !== String(next.port)) portInput.value = String(next.port);
       const preview = panel.querySelector('.mqtt-helper-url');
       if (preview) preview.textContent = next.brokerUrl || t('sidebar.waitingForHost');
     };

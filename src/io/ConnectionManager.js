@@ -4,10 +4,10 @@
 import { eventBus } from '../core/EventBus.js';
 import { appState, BusType, ConnectionState } from '../core/AppState.js';
 import { busLabel, t } from '../core/i18n.js';
-import { FrameParser } from '../core/FrameParser.js?v=fixed-binary-frame-20260515-1';
+import { FrameParser } from '../core/FrameParser.js?v=fft-analysis-20260525-1';
 import { SerialDriver } from './SerialDriver.js';
 import { WebSocketDriver } from './WebSocketDriver.js';
-import { MqttDriver } from './MqttDriver.js';
+import { MqttDriver } from './MqttDriver.js?v=mqtt-check-20260519-1';
 import { UdpDriver } from './UdpDriver.js';
 
 export class ConnectionManager {
@@ -15,6 +15,14 @@ export class ConnectionManager {
     this._driver = null;
     this._parser = new FrameParser();
     this._connectHandler = (data) => this._parser.processData(data);
+    this._errorHandler = (err) => {
+      console.error('Driver error:', err);
+      eventBus.emit('toast', { type: 'error', message: t('messages.connectionError', { error: err.message || err }) });
+    };
+    this._closeHandler = () => {
+      if (!this._disconnecting) this.disconnect();
+    };
+    this._disconnecting = false;
   }
 
   get isConnected() { return appState.isConnected; }
@@ -45,13 +53,8 @@ export class ConnectionManager {
 
       this._parser.startStats();
       this._driver.on('data', this._connectHandler);
-      this._driver.on('error', (err) => {
-        console.error('Driver error:', err);
-        eventBus.emit('toast', { type: 'error', message: t('messages.connectionError', { error: err.message || err }) });
-      });
-      this._driver.on('close', () => {
-        this.disconnect();
-      });
+      this._driver.on('error', this._errorHandler);
+      this._driver.on('close', this._closeHandler);
 
       await this._driver.connect();
       appState.connectionState = ConnectionState.Connected;
@@ -59,6 +62,14 @@ export class ConnectionManager {
 
     } catch (err) {
       console.error('Connection failed:', err);
+      if (this._driver) {
+        const driver = this._driver;
+        this._driver = null;
+        driver.off?.('data', this._connectHandler);
+        driver.off?.('error', this._errorHandler);
+        driver.off?.('close', this._closeHandler);
+        await driver.disconnect?.().catch((error) => console.warn('Disconnect after failed connect error:', error));
+      }
       this._parser.stopStats();
       appState.connectionState = ConnectionState.Error;
       setTimeout(() => {
@@ -69,11 +80,16 @@ export class ConnectionManager {
   }
 
   async disconnect() {
+    if (this._disconnecting) return;
+    this._disconnecting = true;
     try {
       if (this._driver) {
-        this._driver.off('data', this._connectHandler);
-        await this._driver.disconnect();
+        const driver = this._driver;
         this._driver = null;
+        driver.off?.('data', this._connectHandler);
+        driver.off?.('error', this._errorHandler);
+        driver.off?.('close', this._closeHandler);
+        await driver.disconnect();
       }
     } catch (e) {
       console.warn('Disconnect error:', e);
@@ -81,6 +97,7 @@ export class ConnectionManager {
     this._parser.stopStats();
     appState.connectionState = ConnectionState.Disconnected;
     eventBus.emit('toast', { type: 'info', message: t('messages.disconnected') });
+    this._disconnecting = false;
   }
 
   async toggleConnection() {

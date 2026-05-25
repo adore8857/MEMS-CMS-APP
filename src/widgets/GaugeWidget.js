@@ -30,9 +30,9 @@ export class GaugeWidget extends WidgetBase {
     body.innerHTML = `
       <div class="gauge-container">
         <canvas class="gauge-canvas" width="200" height="120"></canvas>
-        <div class="gauge-value">0${this._units}</div>
+        <div class="gauge-value">0${this._units ? ` ${this._units}` : ''}</div>
         <div class="gauge-range">
-          <span>${this._min}</span><span>${this._max}</span>
+          <span>${this._min}${this._units ? ` ${this._units}` : ''}</span><span>${this._max}${this._units ? ` ${this._units}` : ''}</span>
         </div>
       </div>`;
     this._canvas = body.querySelector('canvas');
@@ -125,7 +125,7 @@ export class GaugeWidget extends WidgetBase {
       const labelRadius = r + 16;
       const lx = cx + labelRadius * Math.cos(labelAngle);
       const ly = cy + labelRadius * Math.sin(labelAngle);
-      ctx.fillText(formatValue(labelValues[idx], this._min, this._max), lx, ly);
+      ctx.fillText(formatValue(labelValues[idx], this._min, this._max) + (this._units ? ` ${this._units}` : ''), lx, ly);
     });
 
     // Arc gradient
@@ -176,7 +176,7 @@ export class GaugeWidget extends WidgetBase {
   reset() {
     this._value = 0;
     this._drawGauge(0);
-    if (this._valueEl) this._valueEl.textContent = '0';
+    if (this._valueEl) this._valueEl.textContent = '0' + (this._units ? ` ${this._units}` : '');
   }
 
   destroy() {

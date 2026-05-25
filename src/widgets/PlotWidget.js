@@ -12,9 +12,11 @@ export class PlotWidget extends WidgetBase {
     this._chart = null;
     this._datasetIndices = config.datasetIndices || [0];
     this._datasetLabels = config.datasetLabels || ['Channel 1'];
+    this._datasetUnits = config.datasetUnits || this._datasetIndices.map(() => '');
     this._maxPoints = appState.points;
     this._data = this._datasetIndices.map(() => []);
     this._labels = [];
+    this._nextSamplePoint = 0;
     this._yMin = Number.isFinite(config.yMin) ? config.yMin : undefined;
     this._yMax = Number.isFinite(config.yMax) ? config.yMax : undefined;
     this._manualXScale = false;
@@ -80,6 +82,10 @@ export class PlotWidget extends WidgetBase {
       '--font-sans',
       'Helvetica, Arial, "Microsoft YaHei", sans-serif'
     );
+    const units = [...new Set(this._datasetUnits.filter(Boolean))];
+    const xTitle = appState.locale === 'zh-CN' ? '\u6570\u636e\u70b9' : 'Sample Point';
+    const yTitleBase = appState.locale === 'zh-CN' ? '\u6570\u503c' : 'Value';
+    const yTitle = units.length ? `${yTitleBase} (${units.join(' / ')})` : yTitleBase;
 
     this._chart = new Chart(canvas, {
       type: 'line',
@@ -135,7 +141,14 @@ export class PlotWidget extends WidgetBase {
             cornerRadius: 10,
             padding: 10,
             boxPadding: 4,
-            displayColors: true
+            displayColors: true,
+            callbacks: {
+              title: (items) => items.length ? `${xTitle}: ${items[0].label}` : '',
+              label: (context) => {
+                const unit = this._datasetUnits[context.datasetIndex] || '';
+                return `${context.dataset.label}: ${context.formattedValue}${unit ? ` ${unit}` : ''}`;
+              }
+            }
           },
           zoom: {
             pan: {
@@ -155,17 +168,35 @@ export class PlotWidget extends WidgetBase {
         },
         scales: {
           x: {
-            display: false,
+            display: true,
+            title: {
+              display: true,
+              text: xTitle,
+              color: tickColor,
+              font: { size: 12, family: uiFont, weight: '500' }
+            },
             grid: {
               color: majorGridColor,
               drawTicks: false,
               borderColor: axisColor
+            },
+            ticks: {
+              color: tickColor,
+              font: { size: 11, family: uiFont, weight: '500' },
+              maxTicksLimit: 7,
+              padding: 6
             }
           },
           y: {
             beginAtZero: false,
             min: this._yMin,
             max: this._yMax,
+            title: {
+              display: true,
+              text: yTitle,
+              color: tickColor,
+              font: { size: 12, family: uiFont, weight: '500' }
+            },
             grid: {
               color: majorGridColor,
               drawTicks: false,
@@ -209,15 +240,18 @@ export class PlotWidget extends WidgetBase {
   _onFrame(frame) {
     if (this._paused || this._destroyed) return;
     const maxPts = appState.points;
+    let appendedCount = 0;
 
     this._datasetIndices.forEach((idx, i) => {
       const ds = frame.datasets?.[idx];
       this._lastFrameDatasets[i] = ds || null;
       if (ds && ds.buffer && Array.isArray(ds.buffer)) {
         this._data[i].push(...ds.buffer);
+        appendedCount = Math.max(appendedCount, ds.buffer.length);
       } else {
         const val = ds ? (typeof ds.value === 'number' ? ds.value : parseFloat(ds.value) || 0) : 0;
         this._data[i].push(val);
+        appendedCount = Math.max(appendedCount, 1);
       }
 
       if (this._data[i].length > maxPts) {
@@ -226,7 +260,10 @@ export class PlotWidget extends WidgetBase {
     });
 
     const maxLen = Math.max(...this._data.map((d) => d.length));
-    while (this._labels.length < maxLen) this._labels.push(this._labels.length);
+    for (let i = 0; i < appendedCount; i += 1) {
+      this._labels.push(this._nextSamplePoint);
+      this._nextSamplePoint += 1;
+    }
     if (this._labels.length > maxLen) this._labels.splice(0, this._labels.length - maxLen);
 
     this._scheduleChartUpdate();
@@ -236,6 +273,7 @@ export class PlotWidget extends WidgetBase {
     this._data.forEach((series) => { series.length = 0; });
     this._lastFrameDatasets = [];
     this._labels.length = 0;
+    this._nextSamplePoint = 0;
     if (this._chart) {
       if (typeof this._chart.resetZoom === 'function') this._chart.resetZoom();
       this._chart.data.labels = this._labels;

@@ -34,6 +34,15 @@ function buildBrokerUrl(cfg) {
   return `${scheme}://${host}:${port}${normalizedPath}`;
 }
 
+function messageToBytes(message) {
+  if (typeof message === 'string') return new TextEncoder().encode(message);
+  if (message instanceof ArrayBuffer) return new Uint8Array(message);
+  if (ArrayBuffer.isView(message)) {
+    return new Uint8Array(message.buffer, message.byteOffset, message.byteLength);
+  }
+  return new TextEncoder().encode(String(message ?? ''));
+}
+
 export class MqttDriver {
   constructor() {
     this._client = null;
@@ -110,7 +119,7 @@ export class MqttDriver {
         });
 
         this._client.on('message', (topic, message) => {
-          this._emit('data', new Uint8Array(message));
+          this._emit('data', messageToBytes(message));
         });
 
         this._client.on('error', (e) => {
