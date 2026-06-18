@@ -294,20 +294,27 @@ export class Dashboard {
     this._widgets.forEach((w) => w.destroy?.());
     this._widgets = [];
 
+    const groups = project.groups || [];
     const datasets = [];
-    (project.groups || []).forEach((g) => g.datasets.forEach((d) => datasets.push(d)));
+    groups.forEach((g) => g.datasets.forEach((d) => datasets.push(d)));
     const isTemperatureDataset = (d) => {
       const title = String(d.title || '').toLowerCase();
       const units = String(d.units || '').toLowerCase();
       return title.includes('temp') || units.includes('°c') || units === 'c';
     };
     const wantsPlot = (d) => isEnabled(d.plot);
-    const plotDatasets = datasets.filter((d) => {
+    const isMainPlotDataset = (d) => {
       const widget = String(d.widget || '').toLowerCase();
       const isGaugeLike = widget === 'gauge' || widget === 'gauges';
       const isTemperature = isTemperatureDataset(d);
       return wantsPlot(d) && !isGaugeLike && !isTemperature;
-    });
+    };
+    const plotGroups = groups
+      .map((group) => ({
+        title: group.title || project.title,
+        datasets: (group.datasets || []).filter(isMainPlotDataset)
+      }))
+      .filter((group) => group.datasets.length > 0);
     const temperatureDatasets = datasets.filter((d) => wantsPlot(d) && isTemperatureDataset(d));
     const gaugeDatasets = datasets.filter((d) => d.gauge);
     const barDatasets = datasets.filter((d) => d.bar);
@@ -325,47 +332,63 @@ export class Dashboard {
       return widget;
     };
 
-    if (plotDatasets.length > 0 || temperatureDatasets.length > 0) {
-      const hasMainPlot = plotDatasets.length > 0;
+    if (plotGroups.length > 0 || temperatureDatasets.length > 0) {
+      const hasMainPlot = plotGroups.length > 0;
       const hasTempPlot = temperatureDatasets.length > 0;
       const plotHeight = 280;
-      const mainWidth = hasMainPlot && hasTempPlot ? Math.floor(width * 0.66) : width;
-      const tempX = hasMainPlot ? mainWidth + gap : 0;
-      const tempWidth = hasMainPlot ? Math.max(280, width - tempX) : width;
-
-      if (hasMainPlot) {
-        const range = plotRangeForDatasets(plotDatasets);
-        mountWidget(new PlotWidget({
-          title: `${project.title} - ${t('dashboard.overview')}`,
-          icon: 'PLOT',
-          datasetIndices: plotDatasets.map((d) => d.index),
-          datasetLabels: plotDatasets.map(datasetLabel),
-          datasetUnits: plotDatasets.map((d) => d.units || ''),
-          yMin: range.yMin,
-          yMax: range.yMax,
-          x: 0, y, w: mainWidth, h: plotHeight
-        }));
-      }
-
+      const chartDefs = plotGroups.map((plotGroup) => ({
+        title: plotGroups.length === 1 ? `${project.title} - ${t('dashboard.overview')}` : plotGroup.title,
+        datasets: plotGroup.datasets
+      }));
       if (hasTempPlot) {
-        const range = plotRangeForDatasets(temperatureDatasets);
-        mountWidget(new PlotWidget({
-          title: 'Temperature Trend',
-          icon: 'PLOT',
-          datasetIndices: temperatureDatasets.map((d) => d.index),
-          datasetLabels: temperatureDatasets.map(datasetLabel),
-          datasetUnits: temperatureDatasets.map((d) => d.units || ''),
-          colorOffset: 3,
-          yMin: range.yMin,
-          yMax: range.yMax,
-          x: tempX,
-          y,
-          w: tempWidth,
-          h: plotHeight
-        }));
+        chartDefs.push({ title: 'Temperature Trend', datasets: temperatureDatasets, colorOffset: 3 });
       }
 
-      y += plotHeight + gap;
+      if (plotGroups.length <= 1 && chartDefs.length <= 2) {
+        const mainWidth = hasMainPlot && hasTempPlot ? Math.floor(width * 0.66) : width;
+        const tempX = hasMainPlot ? mainWidth + gap : 0;
+        chartDefs.forEach((chart, index) => {
+          const isTempChart = hasTempPlot && index === chartDefs.length - 1 && chart.title === 'Temperature Trend';
+          const range = plotRangeForDatasets(chart.datasets);
+          mountWidget(new PlotWidget({
+            title: chart.title,
+            icon: 'PLOT',
+            datasetIndices: chart.datasets.map((d) => d.index),
+            datasetLabels: chart.datasets.map(datasetLabel),
+            datasetUnits: chart.datasets.map((d) => d.units || ''),
+            colorOffset: chart.colorOffset,
+            yMin: range.yMin,
+            yMax: range.yMax,
+            x: isTempChart ? tempX : 0,
+            y,
+            w: isTempChart ? Math.max(280, width - tempX) : mainWidth,
+            h: plotHeight
+          }));
+        });
+        y += plotHeight + gap;
+      } else {
+        const chartWidth = Math.floor((width - gap) / 2);
+        chartDefs.forEach((chart, index) => {
+          const range = plotRangeForDatasets(chart.datasets);
+          const row = Math.floor(index / 2);
+          const column = index % 2;
+          mountWidget(new PlotWidget({
+            title: chart.title,
+            icon: 'PLOT',
+            datasetIndices: chart.datasets.map((d) => d.index),
+            datasetLabels: chart.datasets.map(datasetLabel),
+            datasetUnits: chart.datasets.map((d) => d.units || ''),
+            colorOffset: chart.colorOffset ?? chart.datasets[0]?.index ?? 0,
+            yMin: range.yMin,
+            yMax: range.yMax,
+            x: column * (chartWidth + gap),
+            y: y + row * (plotHeight + gap),
+            w: chartWidth,
+            h: plotHeight
+          }));
+        });
+        y += Math.ceil(chartDefs.length / 2) * (plotHeight + gap);
+      }
     }
 
     let cursorX = 0;

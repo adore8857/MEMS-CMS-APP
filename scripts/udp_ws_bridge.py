@@ -8,7 +8,7 @@ Example:
   python scripts/udp_ws_bridge.py ^
     --local-host 0.0.0.0 ^
     --local-port 4000 ^
-    --remote-host 192.168.1.252 ^
+    --remote-host 192.168.1.253 ^
     --remote-port 1030 ^
     --ws-host 127.0.0.1 ^
     --ws-port 8765
