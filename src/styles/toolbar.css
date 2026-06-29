@@ -298,20 +298,6 @@ html[data-theme='light'] .toolbar-btn-icon {
   border-radius: 999px;
 }
 
-.icon-ble::before {
-  width: 10px;
-  height: 10px;
-  border: 1.6px solid var(--accent-blue);
-  border-radius: 999px;
-}
-
-.icon-ble::after {
-  width: 4px;
-  height: 4px;
-  background: var(--accent-cyan);
-  border-radius: 999px;
-}
-
 .icon-network::before {
   width: 14px;
   height: 14px;

@@ -12,11 +12,12 @@ export const OperationMode = {
 
 export const BusType = {
   Serial: 'Serial',
-  Bluetooth: 'Bluetooth',
   WebSocket: 'WebSocket',
   MQTT: 'MQTT',
   UDP: 'UDP'
 };
+
+const SUPPORTED_BUS_TYPES = new Set(Object.values(BusType));
 
 export const ConnectionState = {
   Disconnected: 'Disconnected',
@@ -139,6 +140,7 @@ class AppState {
     this._saveSettings();
   }
   set busType(v) {
+    if (!SUPPORTED_BUS_TYPES.has(v)) v = BusType.Serial;
     if (this._busType === v) return;
     this._busType = v;
     eventBus.emit('state:busTypeChanged', v);
@@ -244,7 +246,7 @@ class AppState {
       if (!raw) return;
       const s = JSON.parse(raw);
       if (s.operationMode) this._operationMode = s.operationMode;
-      if (s.busType) this._busType = s.busType;
+      if (SUPPORTED_BUS_TYPES.has(s.busType)) this._busType = s.busType;
       if (s.locale) this._locale = s.locale;
       if (s.theme) this._theme = s.theme;
       if (s.csvExportEnabled !== undefined) this._csvExportEnabled = s.csvExportEnabled;

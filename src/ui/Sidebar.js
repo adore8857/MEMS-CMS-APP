@@ -3,7 +3,7 @@
  */
 import { eventBus } from '../core/EventBus.js';
 import { appState, OperationMode, BusType, ConnectionState } from '../core/AppState.js';
-import { busLabel, t } from '../core/i18n.js?v=csv-autosave-20260424-1';
+import { busLabel, t } from '../core/i18n.js?v=interface-cleanup-20260625-1';
 import { csvSessionManager } from '../core/CsvSessionManager.js';
 
 export class Sidebar {
@@ -89,7 +89,6 @@ export class Sidebar {
             <div class="sidebar-section-content">
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
                 <button class="btn bus-btn ${appState.busType === BusType.Serial ? 'btn-primary' : ''}" data-bus="Serial">${t('toolbar.uart')}</button>
-                <button class="btn bus-btn ${appState.busType === BusType.Bluetooth ? 'btn-primary' : ''}" data-bus="Bluetooth">${t('toolbar.ble')}</button>
                 <button class="btn bus-btn ${appState.busType === BusType.WebSocket ? 'btn-primary' : ''}" data-bus="WebSocket">WebSocket</button>
                 <button class="btn bus-btn ${appState.busType === BusType.MQTT ? 'btn-primary' : ''}" data-bus="MQTT">MQTT</button>
                 <button class="btn bus-btn ${appState.busType === BusType.UDP ? 'btn-primary' : ''}" data-bus="UDP">UDP</button>
@@ -650,12 +649,6 @@ export class Sidebar {
       html = `<div class="sidebar-section-label">${t('sidebar.mqttConfiguration')}</div><div class="driver-config">${this._buildMqttConfigPanel(appState.mqttConfig)}</div>`;
     } else if (bus === BusType.UDP) {
       html = `<div class="sidebar-section-label">${t('sidebar.udpConfiguration')}</div><div class="driver-config">${this._buildUdpConfigPanel(appState.udpConfig)}</div>`;
-    } else if (bus === BusType.Bluetooth) {
-      html = `<div class="sidebar-section-label">${t('sidebar.bluetoothConfiguration')}</div><div class="driver-config">
-        <div style="color:var(--text-muted);font-size:var(--font-size-xs);line-height:1.6;">
-          ${t('sidebar.bluetoothHint')}
-        </div>
-      </div>`;
     }
 
     panel.innerHTML = html;

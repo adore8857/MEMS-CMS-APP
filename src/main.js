@@ -3,11 +3,11 @@
  */
 import { eventBus } from './core/EventBus.js';
 import { appState } from './core/AppState.js';
-import { applyTheme, modeLabel, t } from './core/i18n.js?v=mems-cms-brand-20260525-2';
+import { applyTheme, modeLabel, t } from './core/i18n.js?v=interface-cleanup-20260625-1';
 import { ConnectionManager } from './io/ConnectionManager.js?v=multi-udp-gateway-routing-20260619-2';
 import { DataSimulator } from './io/DataSimulator.js?v=fft-analysis-20260525-1';
-import { Toolbar } from './ui/Toolbar.js?v=mems-cms-brand-20260525-2';
-import { Sidebar } from './ui/Sidebar.js?v=multi-udp-gateway-routing-20260619-2';
+import { Toolbar } from './ui/Toolbar.js?v=interface-cleanup-20260625-1';
+import { Sidebar } from './ui/Sidebar.js?v=interface-cleanup-20260625-1';
 import { Dashboard } from './ui/Dashboard.js?v=multi-udp-source-filter-20260622-1';
 import { Console } from './ui/Console.js?v=ui-fix-20260424-1';
 import { ProjectModel } from './core/ProjectModel.js?v=multi-mqtt-20260618-1';

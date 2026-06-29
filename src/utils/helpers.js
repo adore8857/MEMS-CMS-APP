@@ -85,7 +85,7 @@ export class CSVExporter {
 
 // ── SVG Icon Helper ──
 export const Icons = {
-  serial: '⚡', bluetooth: '📶', network: '🌐', mqtt: '📡',
+  serial: '⚡', network: '🌐', mqtt: '📡',
   connect: '🔌', disconnect: '⛓️‍💥', play: '▶', pause: '⏸', stop: '⏹',
   settings: '⚙️', project: '📁', editor: '✏️', csv: '📊',
   console: '💻', dashboard: '📈', refresh: '🔄', download: '⬇️',

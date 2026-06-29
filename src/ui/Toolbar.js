@@ -3,7 +3,7 @@
  */
 import { eventBus } from '../core/EventBus.js';
 import { appState, BusType } from '../core/AppState.js';
-import { t } from '../core/i18n.js?v=mems-cms-brand-20260525-2';
+import { t } from '../core/i18n.js?v=interface-cleanup-20260625-1';
 import { csvSessionManager } from '../core/CsvSessionManager.js';
 
 export class Toolbar {
@@ -62,10 +62,6 @@ export class Toolbar {
                 <button class="toolbar-btn toolbar-btn-compact driver-btn ${appState.busType === BusType.Serial ? 'active' : ''}" data-bus="Serial" title="${t('toolbar.uart')}">
                   <div class="toolbar-btn-icon icon-uart" aria-hidden="true"></div>
                   <div class="toolbar-btn-label">${t('toolbar.uart')}</div>
-                </button>
-                <button class="toolbar-btn toolbar-btn-compact driver-btn ${appState.busType === BusType.Bluetooth ? 'active' : ''}" data-bus="Bluetooth" title="${t('toolbar.ble')}">
-                  <div class="toolbar-btn-icon icon-ble" aria-hidden="true"></div>
-                  <div class="toolbar-btn-label">${t('toolbar.ble')}</div>
                 </button>
                 <button class="toolbar-btn toolbar-btn-compact driver-btn ${appState.busType === BusType.WebSocket ? 'active' : ''}" data-bus="WebSocket" title="${t('toolbar.network')}">
                   <div class="toolbar-btn-icon icon-network" aria-hidden="true"></div>

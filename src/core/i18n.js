@@ -32,7 +32,6 @@ const translations = {
       project: '项目',
       interface: '接口',
       uart: '串口',
-      ble: '蓝牙',
       network: '网络',
       mqtt: 'MQTT',
       udp: 'UDP',
@@ -79,7 +78,6 @@ const translations = {
       websocketConfiguration: 'WebSocket 配置',
       mqttConfiguration: 'MQTT 配置',
       udpConfiguration: 'UDP 配置',
-      bluetoothConfiguration: '蓝牙配置',
       baudRate: '波特率',
       dataBits: '数据位',
       stopBits: '停止位',
@@ -115,7 +113,6 @@ const translations = {
       atMostOnce: '0 - 最多一次',
       atLeastOnce: '1 - 至少一次',
       exactlyOnce: '2 - 恰好一次',
-      bluetoothHint: '点击连接后，浏览器会弹出蓝牙设备选择窗口。需要目标设备暴露可读且支持通知的 GATT 特征值。',
       optional: '可选'
     },
     dashboard: {
@@ -124,7 +121,7 @@ const translations = {
       reset: '重置',
       fullscreen: '全屏',
       realTimeTitle: '实时遥测仪表盘',
-      realTimeDesc: '连接设备或启动演示模拟器，即可查看实时数据。支持串口、BLE、WebSocket、MQTT 等多种方式。',
+      realTimeDesc: '连接设备或启动演示模拟器，即可查看实时数据。支持串口、WebSocket、MQTT、UDP 等多种方式。',
       startDemo: '启动演示模拟',
       openProject: '打开项目文件',
       featureQuickPlot: '快速绘图',
@@ -134,7 +131,7 @@ const translations = {
       featureJson: '设备 JSON',
       featureJsonDesc: '让设备通过 JSON 自描述自己的界面。',
       featureProtocols: '多协议',
-      featureProtocolsDesc: '支持 UART、BLE、WebSocket、MQTT。',
+      featureProtocolsDesc: '支持 UART、WebSocket、MQTT、UDP。',
       featureExport: '数据导出',
       featureExportDesc: '支持 CSV 导出，便于分析与回放。',
       featureActions: '交互操作',
@@ -236,7 +233,6 @@ const translations = {
       project: 'Project',
       interface: 'Interface',
       uart: 'UART',
-      ble: 'BLE',
       network: 'Network',
       mqtt: 'MQTT',
       udp: 'UDP',
@@ -283,7 +279,6 @@ const translations = {
       websocketConfiguration: 'WebSocket Configuration',
       mqttConfiguration: 'MQTT Configuration',
       udpConfiguration: 'UDP Configuration',
-      bluetoothConfiguration: 'Bluetooth Configuration',
       baudRate: 'Baud Rate',
       dataBits: 'Data Bits',
       stopBits: 'Stop Bits',
@@ -319,7 +314,6 @@ const translations = {
       atMostOnce: '0 - At most once',
       atLeastOnce: '1 - At least once',
       exactlyOnce: '2 - Exactly once',
-      bluetoothHint: 'Web Bluetooth API will prompt for device selection when you click Connect. It requires a GATT service exposing a readable and notify-capable characteristic.',
       optional: 'Optional'
     },
     dashboard: {
@@ -328,7 +322,7 @@ const translations = {
       reset: 'Reset',
       fullscreen: 'Full Screen',
       realTimeTitle: 'Real-Time Telemetry Dashboard',
-      realTimeDesc: 'Connect a device or start the Demo Simulator to visualize live data. Supports Serial, BLE, WebSocket, MQTT and more.',
+      realTimeDesc: 'Connect a device or start the Demo Simulator to visualize live data. Supports Serial, WebSocket, MQTT and UDP.',
       startDemo: 'Start Demo Simulator',
       openProject: 'Open Project File',
       featureQuickPlot: 'Quick Plot',
@@ -338,7 +332,7 @@ const translations = {
       featureJson: 'Device JSON',
       featureJsonDesc: 'Let the device describe its own dashboard via JSON.',
       featureProtocols: 'Multi-Protocol',
-      featureProtocolsDesc: 'Supports UART, BLE, WebSocket and MQTT.',
+      featureProtocolsDesc: 'Supports UART, WebSocket, MQTT and UDP.',
       featureExport: 'Export',
       featureExportDesc: 'Export CSV data for analysis and playback.',
       featureActions: 'Actions',
@@ -430,8 +424,6 @@ export function busLabel(bus, locale = appState.locale) {
   switch (bus) {
     case BusType.Serial:
       return t('toolbar.uart', {}, locale);
-    case BusType.Bluetooth:
-      return t('toolbar.ble', {}, locale);
     case BusType.WebSocket:
       return 'WebSocket';
     case BusType.MQTT:
