@@ -28,11 +28,12 @@ export const ConnectionState = {
 
 function createDefaultMqttConfig() {
   return {
+    transport: 'tcp',
     version: '3.1.1',
     mode: 'PubSub',
     keepalive: 60,
     host: 'broker.emqx.io',
-    port: 8084,
+    port: 1883,
     path: '/mqtt',
     topic: 'sensor/data',
     subscriptions: [],
@@ -42,8 +43,8 @@ function createDefaultMqttConfig() {
     password: '',
     qos: 0,
     clientId: 'web-serial-studio-' + Math.random().toString(36).substr(2, 8),
-    useSSL: true,
-    brokerUrl: 'wss://broker.emqx.io:8084/mqtt'
+    useSSL: false,
+    brokerUrl: 'mqtt://broker.emqx.io:1883'
   };
 }
 

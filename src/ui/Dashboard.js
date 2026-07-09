@@ -4,12 +4,12 @@
 import { eventBus } from '../core/EventBus.js';
 import { appState } from '../core/AppState.js';
 import { t } from '../core/i18n.js';
-import { PlotWidget } from '../widgets/PlotWidget.js?v=multi-udp-source-filter-20260622-1';
-import { GaugeWidget } from '../widgets/GaugeWidget.js?v=multi-mqtt-20260618-1';
+import { PlotWidget } from '../widgets/PlotWidget.js?v=widget-export-20260708-1';
+import { GaugeWidget } from '../widgets/GaugeWidget.js?v=widget-export-20260708-1';
 import { BarWidget } from '../widgets/BarWidget.js?v=multi-mqtt-20260618-1';
 import { CompassWidget } from '../widgets/CompassWidget.js?v=multi-mqtt-20260618-1';
 import { LedWidget } from '../widgets/LedWidget.js?v=multi-mqtt-20260618-1';
-import { FftWidget } from '../widgets/FftWidget.js?v=multi-mqtt-20260618-1';
+import { FftWidget } from '../widgets/FftWidget.js?v=widget-export-20260708-1';
 import { DataGridWidget } from '../widgets/DataGridWidget.js?v=multi-mqtt-20260618-1';
 import { AccelWidget } from '../widgets/AccelWidget.js?v=multi-mqtt-20260618-1';
 import { sourceIdForDataset } from '../widgets/datasetSource.js';
@@ -187,7 +187,6 @@ export class Dashboard {
         </div>
       </div>
       <div class="dashboard-empty" id="dashboard-empty">
-        <div class="dashboard-empty-icon" aria-hidden="true"></div>
         <div class="dashboard-empty-title">${t('dashboard.realTimeTitle')}</div>
         <div class="dashboard-empty-desc">${t('dashboard.realTimeDesc')}</div>
         <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:16px;max-width:680px">
@@ -375,6 +374,7 @@ export class Dashboard {
             datasetRefs: chart.datasets.map((d) => ({ index: d.index, sourceId: sourceIdForDataset(d) })),
             datasetLabels: chart.datasets.map(datasetLabel),
             datasetUnits: chart.datasets.map((d) => d.units || ''),
+            datasetDecimals: chart.datasets.map((d) => Number.isInteger(d.decimals) ? d.decimals : d.precision),
             colorOffset: chart.colorOffset,
             yMin: range.yMin,
             yMax: range.yMax,
@@ -399,6 +399,7 @@ export class Dashboard {
             datasetRefs: chart.datasets.map((d) => ({ index: d.index, sourceId: sourceIdForDataset(d) })),
             datasetLabels: chart.datasets.map(datasetLabel),
             datasetUnits: chart.datasets.map((d) => d.units || ''),
+            datasetDecimals: chart.datasets.map((d) => Number.isInteger(d.decimals) ? d.decimals : d.precision),
             colorOffset: chart.colorOffset ?? chart.datasets[0]?.index ?? 0,
             yMin: range.yMin,
             yMax: range.yMax,

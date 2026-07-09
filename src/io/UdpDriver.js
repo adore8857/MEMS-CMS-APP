@@ -1,8 +1,8 @@
 /**
  * UdpDriver - UDP transport through a local WebSocket bridge.
  *
- * Browsers do not expose raw UDP sockets. Run scripts/udp_ws_bridge.py and
- * this driver will exchange binary UDP datagrams through that bridge.
+ * Browsers do not expose raw UDP sockets. The Electron desktop build starts
+ * an integrated Node.js UDP gateway; the browser build can still use a bridge.
  */
 import { appState } from '../core/AppState.js';
 
@@ -88,7 +88,10 @@ export class UdpDriver {
         this._ws.onopen = () => resolve();
         this._ws.onerror = (e) => {
           this._emit('error', e);
-          reject(new Error(`UDP bridge connection failed (${url}). Start scripts/udp_ws_bridge.py first.`));
+          const hint = window.memsCmsDesktop
+            ? 'The integrated Electron UDP gateway is not reachable.'
+            : 'Start scripts/udp_ws_bridge.py first.';
+          reject(new Error(`UDP bridge connection failed (${url}). ${hint}`));
         };
         this._ws.onclose = () => this._emit('close');
         this._ws.onmessage = async (e) => {

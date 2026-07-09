@@ -82,8 +82,13 @@ function normalizeResult(result) {
   };
 }
 
+function resultHasDatasets(result) {
+  const frames = Array.isArray(result?.frames) ? result.frames : [];
+  return frames.some((frame) => Array.isArray(frame?.datasets) && frame.datasets.length > 0);
+}
+
 self.onmessage = (event) => {
-  const { type, id, code, frame } = event.data || {};
+  const { type, id, code, frame, fallbackFrames } = event.data || {};
 
   try {
     if (type === 'load') {
@@ -97,11 +102,15 @@ self.onmessage = (event) => {
         loadParser(code || '');
       }
 
-      const result = parseFn(frame);
+      const candidates = [frame, ...(Array.isArray(fallbackFrames) ? fallbackFrames : [])];
+      let result = normalizeResult(parseFn(candidates[0]));
+      for (let i = 1; i < candidates.length && !resultHasDatasets(result); i += 1) {
+        result = normalizeResult(parseFn(candidates[i]));
+      }
       self.postMessage({
         type: 'parsed',
         id,
-        result: normalizeResult(result)
+        result
       });
     }
   } catch (error) {

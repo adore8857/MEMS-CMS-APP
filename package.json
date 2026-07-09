@@ -1,0 +1,67 @@
+{
+  "name": "mems-cms",
+  "version": "1.0.0",
+  "description": "MEMS-CMS desktop application.",
+  "productName": "MEMS-CMS",
+  "main": "electron/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "electron .",
+    "smoke": "cross-env ELECTRON_SMOKE_TEST=1 electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux",
+    "dist:mac": "electron-builder --mac"
+  },
+  "build": {
+    "appId": "edu.neu.memslab.cms",
+    "productName": "MEMS-CMS",
+    "directories": {
+      "output": "dist"
+    },
+    "icon": "build/icon.ico",
+    "files": [
+      "index.html",
+      "src/**/*",
+      "scripts/**/*",
+      "projects/**/*",
+      "frame_parsing_guide.md",
+      "README.md",
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraMetadata": {
+      "main": "electron/main.js"
+    },
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Science"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.productivity"
+    }
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "mqtt": "^5.15.2",
+    "ws": "^8.21.0"
+  }
+}

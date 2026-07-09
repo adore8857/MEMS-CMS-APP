@@ -15,9 +15,7 @@ export class PreferencesDialog {
 
   open() {
     if (this._el) this.close();
-
-    const serialCfg = appState.serialConfig;
-    const frameCfg = appState.frameConfig;
+    const zh = appState.locale === 'zh-CN';
 
     this._el = document.createElement('div');
     this._el.className = 'modal-overlay animate-fadeIn';
@@ -53,65 +51,6 @@ export class PreferencesDialog {
           </div>
 
           <div class="editor-form-section" style="margin-bottom:20px">
-            <div class="editor-form-section-title">${t('preferences.frameParsing')}</div>
-            <div class="editor-form-grid">
-              <div class="form-row">
-                <div class="form-label">${t('preferences.frameDetection')}</div>
-                <select class="form-select" id="pref-frame-detection">
-                  <option value="EndDelimiterOnly" ${frameCfg.frameDetection === 'EndDelimiterOnly' ? 'selected' : ''}>${t('preferences.endDelimiterOnly')}</option>
-                  <option value="StartAndEndDelimiter" ${frameCfg.frameDetection === 'StartAndEndDelimiter' ? 'selected' : ''}>${t('preferences.startAndEnd')}</option>
-                  <option value="NoDelimiters" ${frameCfg.frameDetection === 'NoDelimiters' ? 'selected' : ''}>${t('preferences.noDelimiters')}</option>
-                </select>
-              </div>
-              <div class="form-row">
-                <div class="form-label">${t('sidebar.endDelimiter')}</div>
-                <input class="form-input" id="pref-end-del" value="${frameCfg.endDelimiter}" placeholder="\\n">
-              </div>
-              <div class="form-row">
-                <div class="form-label">${t('sidebar.startDelimiter')}</div>
-                <input class="form-input" id="pref-start-del" value="${frameCfg.startDelimiter}" placeholder="${t('sidebar.leaveEmpty')}">
-              </div>
-            </div>
-          </div>
-
-          <div class="editor-form-section" style="margin-bottom:20px">
-            <div class="editor-form-section-title">${t('preferences.serialDefaults')}</div>
-            <div class="editor-form-grid">
-              <div class="form-row">
-                <div class="form-label">${t('sidebar.baudRate')}</div>
-                <select class="form-select" id="pref-baud">
-                  ${[300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600].map((b) =>
-                    `<option ${b === serialCfg.baudRate ? 'selected' : ''} value="${b}">${b}</option>`).join('')}
-                </select>
-              </div>
-              <div class="form-row">
-                <div class="form-label">${t('sidebar.dataBits')}</div>
-                <select class="form-select" id="pref-databits">
-                  ${[7, 8].map((b) => `<option ${b === serialCfg.dataBits ? 'selected' : ''} value="${b}">${b}</option>`).join('')}
-                </select>
-              </div>
-              <div class="form-row">
-                <div class="form-label">${t('sidebar.stopBits')}</div>
-                <select class="form-select" id="pref-stopbits">
-                  ${[1, 2].map((b) => `<option ${b === serialCfg.stopBits ? 'selected' : ''} value="${b}">${b}</option>`).join('')}
-                </select>
-              </div>
-              <div class="form-row">
-                <div class="form-label">${t('sidebar.parity')}</div>
-                <select class="form-select" id="pref-parity">
-                  ${['none', 'even', 'odd', 'mark', 'space'].map((p) => `<option ${p === serialCfg.parity ? 'selected' : ''} value="${p}">${p}</option>`).join('')}
-                </select>
-              </div>
-              <div class="form-row">
-                <div class="form-label">${t('preferences.flowControl')}</div>
-                <select class="form-select" id="pref-flowcontrol">
-                  ${['none', 'hardware'].map((p) => `<option ${p === serialCfg.flowControl ? 'selected' : ''} value="${p}">${p}</option>`).join('')}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div class="editor-form-section" style="margin-bottom:20px">
             <div class="editor-form-section-title">${t('preferences.dataExport')}</div>
             <div style="display:flex;flex-direction:column;gap:8px">
               <label class="checkbox-wrap">
@@ -129,15 +68,21 @@ export class PreferencesDialog {
 
           <div class="editor-form-section">
             <div class="editor-form-section-title">${t('preferences.about')}</div>
-            <div style="font-size:12px;color:var(--text-muted);line-height:1.8">
-              <div><strong style="color:var(--text-secondary)">MEMS-CMS</strong> - v1.0.0</div>
-              <div>${t('preferences.aboutIntro')}</div>
-              <div style="margin-top:8px">${t('preferences.aboutSupports')}</div>
-              <div>${t('preferences.aboutWidgets')}</div>
+            <div style="font-size:13px;color:var(--text-muted);line-height:1.75">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+                <img src="src/assets/cms-icon.png" alt="MEMS-CMS" style="width:42px;height:42px;border-radius:10px;box-shadow:0 4px 14px rgba(15,23,42,.12)">
+                <div>
+                  <div><strong style="color:var(--text-primary);font-size:15px">MEMS-CMS</strong> <span style="color:var(--text-muted)">v1.0.0</span></div>
+                  <div>${zh ? 'MEMS 实验室状态监测上位机系统' : 'MEMS Condition Monitoring System desktop application'}</div>
+                </div>
+              </div>
+              <div>${zh ? '用于轴承、轴瓦、齿轮箱等实验设备的数据接入、协议解析、实时绘图、FFT 分析和数据导出。' : 'A desktop monitoring system for device data acquisition, protocol parsing, real-time plotting, FFT analysis and data export.'}</div>
+              <div style="margin-top:8px">${zh ? '通信方式：串口、WebSocket、MQTT、UDP。' : 'Interfaces: Serial, WebSocket, MQTT and UDP.'}</div>
+              <div>${zh ? '解析方式：快速绘图、设备 JSON、项目 JSON、完整帧协议字段解析。' : 'Parsing modes: Quick Plot, Device JSON, Project JSON and full-frame protocol field parsing.'}</div>
+              <div>${zh ? '显示控件：折线图、仪表、柱状图、FFT、数据表格及命令交互。' : 'Widgets: Plot, Gauge, Bar, FFT, DataGrid and command interaction.'}</div>
               <div style="margin-top:8px;color:var(--text-muted)">
-                <strong>${t('preferences.aboutQuickPlot')}</strong> <code style="color:var(--accent-green)">25.4,63.2,1013.1\\n</code><br>
-                <strong>${t('preferences.aboutJson')}</strong><br>
-                <strong>${t('preferences.aboutProject')}</strong>
+                <strong>${zh ? 'UDP 网关：' : 'UDP Gateway: '}</strong>${zh ? '桌面版内置 Node.js UDP 网关，无需额外 Python 环境。' : 'The desktop build includes a Node.js UDP gateway and does not require Python.'}<br>
+                <strong>${zh ? '项目文件：' : 'Project Files: '}</strong>${zh ? '加载 .json 文件即可定义解析字段、换算公式和仪表盘布局。' : 'Load .json files to define fields, formulas and dashboard layouts.'}
               </div>
             </div>
           </div>
@@ -170,8 +115,6 @@ export class PreferencesDialog {
       appState.points = 100;
       appState.locale = 'zh-CN';
       appState.theme = 'dark';
-      appState.updateSerialConfig({ baudRate: 115200, dataBits: 8, stopBits: 1, parity: 'none', flowControl: 'none' });
-      appState.updateFrameConfig({ endDelimiter: '\\n', startDelimiter: '', frameDetection: 'EndDelimiterOnly' });
       appState.csvExportEnabled = true;
       appState.consoleExportEnabled = false;
       applyTheme();
@@ -188,20 +131,6 @@ export class PreferencesDialog {
       appState.points = parseInt(this._el.querySelector('#pref-points')?.value, 10) || 100;
       appState.locale = nextLocale;
       appState.theme = nextTheme;
-
-      appState.updateSerialConfig({
-        baudRate: parseInt(this._el.querySelector('#pref-baud')?.value, 10) || 115200,
-        dataBits: parseInt(this._el.querySelector('#pref-databits')?.value, 10) || 8,
-        stopBits: parseInt(this._el.querySelector('#pref-stopbits')?.value, 10) || 1,
-        parity: this._el.querySelector('#pref-parity')?.value || 'none',
-        flowControl: this._el.querySelector('#pref-flowcontrol')?.value || 'none'
-      });
-
-      appState.updateFrameConfig({
-        endDelimiter: this._el.querySelector('#pref-end-del')?.value || '\\n',
-        startDelimiter: this._el.querySelector('#pref-start-del')?.value || '',
-        frameDetection: this._el.querySelector('#pref-frame-detection')?.value || 'EndDelimiterOnly'
-      });
 
       appState.csvExportEnabled = this._el.querySelector('#pref-csv')?.checked ?? true;
       appState.consoleExportEnabled = this._el.querySelector('#pref-console-log')?.checked ?? false;

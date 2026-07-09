@@ -1,4 +1,4 @@
-/* ═══════════════════════════════════════════════════════════
+﻿/* ═══════════════════════════════════════════════════════════
    Web Serial Studio — Sidebar Styles
    ═══════════════════════════════════════════════════════════ */
 
@@ -27,7 +27,7 @@
   justify-content: space-between;
   padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--border-subtle);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset;
+  box-shadow: none;
 }
 .sidebar-title {
   font-size: var(--font-size-lg);
@@ -38,11 +38,12 @@
   gap: var(--space-3);
 }
 .sidebar-title-icon {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent-cyan);
-  box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.12);
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--accent-blue);
+  transform: rotate(45deg);
+  box-shadow: none;
   flex-shrink: 0;
 }
 .sidebar-close {
@@ -75,6 +76,16 @@
 /* ── Sidebar Section ── */
 .sidebar-section {
   margin-bottom: var(--space-4);
+}
+
+.driver-baud-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(86px, .8fr);
+  gap: var(--space-2);
+  align-items: center;
+}
+.driver-baud-grid.single {
+  grid-template-columns: minmax(0, 1fr);
 }
 .sidebar-section-label {
   font-size: var(--font-size-sm);
@@ -117,13 +128,13 @@
 }
 .form-input {
   width: 100%;
-  height: 36px;
+  height: 38px;
   font-size: var(--font-size-base);
   min-width: 0;
 }
 .form-select {
   width: 100%;
-  height: 36px;
+  height: 38px;
   font-size: var(--font-size-base);
   min-width: 0;
 }
@@ -137,7 +148,7 @@
   width: 80px;
   min-width: 80px;
   flex-shrink: 0;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-base);
 }
 .form-row-inline .form-input,
 .form-row-inline .form-select {
@@ -175,7 +186,7 @@
 .sidebar-status-dot {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  border-radius: 2px;
   background: var(--status-disconnected);
   flex-shrink: 0;
   transition: all var(--transition-base);
@@ -193,10 +204,10 @@
 /* ── Driver Config ── */
 .driver-config {
   background: var(--panel-bg);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   padding: var(--space-4);
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -223,26 +234,26 @@
 .mqtt-helper-card {
   margin-top: var(--space-3);
   padding: var(--space-4);
-  background: linear-gradient(180deg, rgba(6, 182, 212, 0.08), rgba(59, 130, 246, 0.04));
-  border: 1px solid rgba(6, 182, 212, 0.16);
+  background: var(--panel-bg);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
 }
 .mqtt-helper-title {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-base);
   letter-spacing: 0.04em;
   color: var(--accent-cyan);
   font-weight: var(--font-weight-semibold);
   margin-bottom: var(--space-1);
 }
 .mqtt-helper-url {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-base);
   color: var(--text-primary);
   word-break: break-all;
   margin-bottom: var(--space-2);
 }
 .mqtt-helper-note {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-sm);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -250,10 +261,10 @@
 .gateway-status-card {
   margin-top: var(--space-3);
   padding: var(--space-4);
-  background: linear-gradient(180deg, var(--panel-bg), var(--bg-tertiary));
+  background: var(--panel-bg);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
 }
 .gateway-status-heading {
   display: flex;
@@ -265,10 +276,10 @@
   margin-bottom: var(--space-3);
 }
 .gateway-health-dot {
-  width: 7px;
-  height: 7px;
-  flex: 0 0 7px;
-  border-radius: 50%;
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 2px;
   background: var(--status-disconnected);
 }
 .gateway-health-dot.online {
@@ -415,4 +426,12 @@
   .mqtt-config-grid .mqtt-toggles .checkbox-wrap:last-child {
     grid-column: auto;
   }
+}
+
+html[data-theme='light'] .sidebar-header {
+  box-shadow: none;
+}
+
+html[data-theme='light'] .driver-config {
+  background: var(--panel-bg);
 }

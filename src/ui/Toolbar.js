@@ -16,6 +16,7 @@ export class Toolbar {
     this._render();
     this._bindDomEvents();
     eventBus.on('state:connectionStateChanged', () => this._updateConnectBtn());
+    eventBus.on('state:busTypeChanged', () => this._updateDriverButtons());
     setInterval(() => this._updateStats(), 1000);
   }
 
@@ -144,8 +145,6 @@ export class Toolbar {
       btn.addEventListener('click', () => {
         if (appState.isConnected) return;
         appState.busType = btn.dataset.bus;
-        this._container.querySelectorAll('.driver-btn').forEach((node) => node.classList.remove('active'));
-        btn.classList.add('active');
       });
     });
 
@@ -192,6 +191,12 @@ export class Toolbar {
     if (!icon || !label) return;
     icon.className = `toolbar-btn-icon ${this._sim?.isRunning ? 'icon-stop' : 'icon-sim'}`;
     label.textContent = this._sim?.isRunning ? t('toolbar.stopSim') : t('toolbar.demoSim');
+  }
+
+  _updateDriverButtons() {
+    this._container.querySelectorAll('.driver-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.bus === appState.busType);
+    });
   }
 
   _updateStats() {

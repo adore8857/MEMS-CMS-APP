@@ -186,6 +186,10 @@ export class FrameParser {
     return this._projectFrameParserCode().length > 0;
   }
 
+  _shouldPassFullProjectFrame() {
+    return this._hasProjectFrameParser();
+  }
+
   _projectParserIndexBase() {
     const indices = [];
     (this._project()?.groups || []).forEach((group) => {
@@ -228,7 +232,7 @@ export class FrameParser {
     }
 
     try {
-      this._projectParserWorker = new Worker(new URL('./FrameParserWorker.js', import.meta.url), { type: 'module' });
+      this._projectParserWorker = new Worker(new URL('./FrameParserWorker.js?v=full-frame-parser-20260708-2', import.meta.url), { type: 'module' });
       this._projectParserKey = key;
       this._projectParserWorker.onmessage = (event) => this._handleProjectParserMessage(event.data);
       this._projectParserWorker.onerror = (error) => {
@@ -273,8 +277,32 @@ export class FrameParser {
       type: 'parse',
       id,
       frame: content,
+      fallbackFrames: this._projectParserFallbackFrames(content),
       code: this._projectFrameParserCode()
     });
+  }
+
+  _projectParserFallbackFrames(content) {
+    const config = this._frameConfig();
+    const fallbacks = [];
+
+    if (config.hexadecimalDelimiters) {
+      const frame = String(content || '').replace(/[^0-9a-fA-F]/g, '');
+      const start = String(config.startDelimiter || '').replace(/[^0-9a-fA-F]/g, '');
+      const end = String(config.endDelimiter || '').replace(/[^0-9a-fA-F]/g, '');
+      if (start && end && frame.toLowerCase().startsWith(start.toLowerCase()) && frame.toLowerCase().endsWith(end.toLowerCase())) {
+        fallbacks.push(frame.slice(start.length, frame.length - end.length));
+      }
+      return fallbacks;
+    }
+
+    const frame = String(content || '');
+    const start = this._resolveDelimiter(config.startDelimiter || '');
+    const end = this._resolveDelimiter(config.endDelimiter || '');
+    if (start && end && frame.startsWith(start) && frame.endsWith(end)) {
+      fallbacks.push(frame.slice(start.length, frame.length - end.length).trim());
+    }
+    return fallbacks;
   }
 
   _handleProjectParserMessage(message = {}) {
@@ -434,7 +462,9 @@ export class FrameParser {
       while ((startPos = text.indexOf(startDel)) !== -1) {
         const endPos = text.indexOf(endDel, startPos + startDel.length);
         if (endPos === -1) break;
-        const content = text.substring(startPos + startDel.length, endPos).trim();
+        const content = this._shouldPassFullProjectFrame()
+          ? text.substring(startPos, endPos + endDel.length).trim()
+          : text.substring(startPos + startDel.length, endPos).trim();
         
         const consumedLength = endPos + endDel.length;
         this._buffer = this._buffer.slice(consumedLength);
@@ -461,7 +491,9 @@ export class FrameParser {
       if (!endDel.length) return;
       let endPos = this._indexOfBytes(this._buffer, endDel);
       while (endPos !== -1) {
-        const content = this._buffer.slice(0, endPos);
+        const content = this._shouldPassFullProjectFrame()
+          ? this._buffer.slice(0, endPos + endDel.length)
+          : this._buffer.slice(0, endPos);
         this._buffer = this._buffer.slice(endPos + endDel.length);
         if (content.length) this._parseFrameContent(this._bytesToHex(content));
         endPos = this._indexOfBytes(this._buffer, endDel);
@@ -481,7 +513,9 @@ export class FrameParser {
           return;
         }
 
-        const content = this._buffer.slice(startPos + startDel.length, endPos);
+        const content = this._shouldPassFullProjectFrame()
+          ? this._buffer.slice(startPos, endPos + endDel.length)
+          : this._buffer.slice(startPos + startDel.length, endPos);
         this._buffer = this._buffer.slice(endPos + endDel.length);
         if (content.length) this._parseFrameContent(this._bytesToHex(content));
         startPos = this._indexOfBytes(this._buffer, startDel);
@@ -547,17 +581,20 @@ export class FrameParser {
         startPos = 0;
       }
 
-      const endPos = startDel.length + contentLength;
-      const requiredLength = endPos + endDel.length;
+      const fullFrameMode = this._shouldPassFullProjectFrame();
+      const requiredLength = fullFrameMode ? contentLength : startDel.length + contentLength + endDel.length;
+      const endPos = fullFrameMode ? contentLength - endDel.length : startDel.length + contentLength;
       if (this._buffer.length < requiredLength) return true;
 
       if (this._bytesEqualAt(this._buffer, endDel, endPos)) {
-        const content = this._buffer.slice(startDel.length, endPos);
+        const content = fullFrameMode ? this._buffer.slice(0, requiredLength) : this._buffer.slice(startDel.length, endPos);
         this._buffer = this._buffer.slice(requiredLength);
         if (content.length) this._parseFrameContent(this._bytesToHex(content));
         startPos = this._indexOfBytes(this._buffer, startDel);
         continue;
       }
+
+      if (fullFrameMode) return false;
 
       const nextStart = this._indexOfBytes(this._buffer, startDel, 1);
       if (nextStart === -1) {

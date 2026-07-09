@@ -128,10 +128,14 @@ export class ProjectModel {
       frameDetection: data.frameDetection || 'EndDelimiterOnly',
       hexadecimalDelimiters: data.hexadecimalDelimiters ?? false,
       protocolFields: Array.isArray(data.protocolFields) ? data.protocolFields : [],
+      protocolSchema: data.protocolSchema && typeof data.protocolSchema === 'object' ? data.protocolSchema : {},
       parsers,
       frameParser: data.frameParser || frameParserCode,
       frameParserCode,
       frameParserLanguage: data.frameParserLanguage ?? sources[0]?.frameParserLanguage ?? 0,
+      protocolValidation: data.protocolValidation && typeof data.protocolValidation === 'object' ? data.protocolValidation : {},
+      sourceIdMap: Array.isArray(data.sourceIdMap) ? data.sourceIdMap : [],
+      calibrationParameters: Array.isArray(data.calibrationParameters) ? data.calibrationParameters : [],
       sources,
       groups: (data.groups || []).map(g => {
         const groupWidget = g.widget || 'DataGrid';

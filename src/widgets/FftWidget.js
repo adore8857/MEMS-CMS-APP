@@ -2,7 +2,7 @@
  * FftWidget - engineering-oriented frequency magnitude view for sampled data.
  */
 import FFT from 'https://cdn.jsdelivr.net/npm/fft.js@4.0.4/lib/fft.js/+esm';
-import { WidgetBase } from './WidgetBase.js';
+import { WidgetBase } from './WidgetBase.js?v=widget-export-20260708-1';
 import { eventBus } from '../core/EventBus.js';
 import { getDatasetColor } from '../utils/helpers.js';
 import { datasetFromFrame } from './datasetSource.js';
@@ -41,6 +41,7 @@ export class FftWidget extends WidgetBase {
     this._histories = this._datasets.map(() => []);
     this._spectra = this._datasets.map(() => null);
     this._engines = new Map();
+    this._rawHistory = [];
     this._canvas = null;
     this._ctx = null;
     this._raf = null;
@@ -59,9 +60,11 @@ export class FftWidget extends WidgetBase {
   _subscribe() {
     this._unsubscribe = eventBus.on('frame:received', (frame) => {
       if (this._destroyed) return;
+      let matched = false;
       this._datasets.forEach((dataset, index) => {
         const received = datasetFromFrame(frame, dataset, index);
         if (!received) return;
+        matched = true;
         const incoming = Array.isArray(received.buffer) && received.buffer.length
           ? received.buffer.map(Number).filter(Number.isFinite)
           : [Number(received.value)].filter(Number.isFinite);
@@ -83,8 +86,71 @@ export class FftWidget extends WidgetBase {
 
         this._spectra[index] = this._computeSpectrum(history, dataset, received);
       });
+      if (matched) this._appendRawHistory(frame);
       this._scheduleDraw();
     });
+  }
+
+  _supportsExport() { return true; }
+
+  _appendRawHistory(frame) {
+    this._rawHistory.push({
+      timestamp: new Date(frame.timestamp || Date.now()).toISOString(),
+      title: frame.title || this.config.title || '',
+      sourceId: frame.sourceId || '',
+      topic: frame.topic || '',
+      raw: frame.raw || ''
+    });
+    if (this._rawHistory.length > 5000) this._rawHistory.splice(0, this._rawHistory.length - 5000);
+  }
+
+  _exportParsedData() {
+    const spectra = this._spectra
+      .map((spectrum, index) => ({ spectrum, dataset: this._datasets[index] }))
+      .filter((item) => item.spectrum && !item.spectrum.pending && Array.isArray(item.spectrum.bins));
+
+    if (spectra.length) {
+      const rows = [['dataset', 'bin', 'frequency_hz', 'magnitude', 'display_magnitude', 'mode', 'unit']];
+      spectra.forEach(({ spectrum, dataset }) => {
+        spectrum.bins.forEach((point) => {
+          rows.push([
+            dataset?.title || '',
+            point.bin,
+            spectrum.sampleRate ? point.frequency : '',
+            point.magnitude,
+            point.displayMagnitude,
+            spectrum.magnitudeMode,
+            spectrum.amplitudeUnit
+          ]);
+        });
+      });
+      return {
+        filename: `${this._safeFileName(this.config.title)}_spectrum.csv`,
+        rows
+      };
+    }
+
+    const maxLen = Math.max(0, ...this._histories.map((history) => history.length));
+    if (!maxLen) return null;
+    const rows = [['sample', ...this._datasets.map((dataset, index) => dataset?.title || `Ch ${index + 1}`)]];
+    for (let i = 0; i < maxLen; i += 1) {
+      rows.push([i, ...this._histories.map((history) => history[i] ?? '')]);
+    }
+    return {
+      filename: `${this._safeFileName(this.config.title)}_samples.csv`,
+      rows
+    };
+  }
+
+  _exportRawFrames() {
+    if (!this._rawHistory.length) return null;
+    return {
+      filename: `${this._safeFileName(this.config.title)}_raw_frames.csv`,
+      rows: [
+        ['timestamp', 'sourceId', 'topic', 'frameTitle', 'raw'],
+        ...this._rawHistory.map((item) => [item.timestamp, item.sourceId, item.topic, item.title, item.raw])
+      ]
+    };
   }
 
   _computeSpectrum(samples, dataset, received) {
@@ -280,6 +346,7 @@ export class FftWidget extends WidgetBase {
   reset() {
     this._histories = this._datasets.map(() => []);
     this._spectra = this._datasets.map(() => null);
+    this._rawHistory = [];
     this._draw();
   }
 

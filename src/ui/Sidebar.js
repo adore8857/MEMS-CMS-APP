@@ -6,6 +6,8 @@ import { appState, OperationMode, BusType, ConnectionState } from '../core/AppSt
 import { busLabel, t } from '../core/i18n.js?v=interface-cleanup-20260625-1';
 import { csvSessionManager } from '../core/CsvSessionManager.js';
 
+const SERIAL_BAUD_RATES = [300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600];
+
 export class Sidebar {
   constructor(container) {
     this._container = container;
@@ -16,7 +18,10 @@ export class Sidebar {
     this._updateDriverPanel();
     this._updateStatusDot();
     eventBus.on('state:busTypeChanged', () => this._updateDriverPanel());
-    eventBus.on('state:connectionStateChanged', () => this._updateStatusDot());
+    eventBus.on('state:connectionStateChanged', () => {
+      this._updateStatusDot();
+      this._syncBusButtons();
+    });
     eventBus.on('state:operationModeChanged', () => this._updateDriverPanel());
     eventBus.on('csv:targetChanged', () => this._updateCsvTargetHint());
     eventBus.on('gateway:status', (status) => {
@@ -189,9 +194,8 @@ export class Sidebar {
 
     this._container.querySelectorAll('.bus-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
+        if (appState.isConnected) return;
         appState.busType = btn.dataset.bus;
-        this._container.querySelectorAll('.bus-btn').forEach((node) => node.classList.remove('btn-primary'));
-        btn.classList.add('btn-primary');
       });
     });
 
@@ -306,6 +310,10 @@ export class Sidebar {
             ].map(([value, label]) => `<option ${cfg.mode === value ? 'selected' : ''} value="${value}">${label}</option>`).join('')}
           </select>
         </div>
+        <div class="form-row" style="grid-column:1 / -1">
+          <div class="form-label">${appState.locale === 'zh-CN' ? '连接方式' : 'Connection Type'}</div>
+          <input class="form-input" value="${appState.locale === 'zh-CN' ? 'MQTT over WebSocket（WS/WSS）' : 'MQTT over WebSocket (WS/WSS)'}" disabled>
+        </div>
         <div class="form-row">
           <div class="form-label">${t('sidebar.qos')}</div>
           <select class="form-select" id="drv-mqtt-qos">
@@ -368,9 +376,13 @@ export class Sidebar {
         </div>
       </div>
       <div class="mqtt-helper-card">
-        <div class="mqtt-helper-title">${t('sidebar.browserEndpoint')}</div>
+        <div class="mqtt-helper-title">${window.memsCmsDesktop ? (appState.locale === 'zh-CN' ? 'MQTT 连接地址' : 'MQTT Connection URL') : t('sidebar.browserEndpoint')}</div>
         <div class="mqtt-helper-url mono">${preview}</div>
-        <div class="mqtt-helper-note">${t('sidebar.mqttHelper')} ${appState.locale === 'zh-CN' ? '多主题格式：每行 topic 或 topic | sourceId。sourceId 用于绑定项目 sources 中的解析器。' : 'Multi-topic format: one topic per line, or topic | sourceId.'}</div>
+        <div class="mqtt-helper-note">${window.memsCmsDesktop
+          ? (appState.locale === 'zh-CN'
+            ? '软件当前通过 Broker 的 WebSocket MQTT 端口连接，例如 ws://host:8083/mqtt 或 wss://host:8084/mqtt。原生 TCP 1883 直连需要后续增加 Node MQTT 驱动。'
+            : 'The desktop app currently connects through the broker WebSocket MQTT listener, for example ws://host:8083/mqtt or wss://host:8084/mqtt. Native TCP 1883 requires a future Node MQTT driver.')
+          : t('sidebar.mqttHelper')} ${appState.locale === 'zh-CN' ? '多主题格式：每行 topic 或 topic | sourceId。sourceId 用于绑定项目 sources 中的解析器。' : 'Multi-topic format: one topic per line, or topic | sourceId.'}</div>
       </div>`;
   }
 
@@ -429,6 +441,564 @@ export class Sidebar {
       });
   }
 
+  _buildMqttConfigPanel(cfg) {
+    const isDesktop = !!window.memsCmsDesktop;
+    const transport = isDesktop && cfg.transport === 'tcp' ? 'tcp' : 'websocket';
+    const isTcp = transport === 'tcp';
+    const path = cfg.path || '/mqtt';
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    const host = cfg.host || '';
+    const port = Number(cfg.port) || (isTcp ? (cfg.useSSL ? 8883 : 1883) : (cfg.useSSL ? 8084 : 8083));
+    const preview = host
+      ? (isTcp
+        ? `${cfg.useSSL ? 'mqtts' : 'mqtt'}://${host}:${port}`
+        : `${cfg.useSSL ? 'wss' : 'ws'}://${host}:${port}${normalizedPath}`)
+      : t('sidebar.waitingForHost');
+    const subscriptionLines = Array.isArray(cfg.subscriptions)
+      ? cfg.subscriptions.map((subscription) => {
+        if (typeof subscription === 'string') return subscription;
+        const topic = subscription.topic || subscription.mqttTopic || '';
+        const sourceId = subscription.sourceId ?? subscription.source ?? '';
+        return sourceId ? `${topic} | ${sourceId}` : topic;
+      }).filter(Boolean).join('\n')
+      : '';
+    const connectionNote = isDesktop
+      ? (isTcp
+        ? (appState.locale === 'zh-CN'
+          ? '软件通过 Electron/Node 直接连接 MQTT TCP 端口，例如 mqtt://host:1883；启用 SSL/TLS 时使用 mqtts://host:8883。'
+          : 'The desktop app connects directly to MQTT over TCP, for example mqtt://host:1883; with SSL/TLS it uses mqtts://host:8883.')
+        : (appState.locale === 'zh-CN'
+          ? '软件通过 Broker 的 WebSocket MQTT 端口连接，例如 ws://host:8083/mqtt 或 wss://host:8084/mqtt。'
+          : 'The desktop app connects through the broker WebSocket MQTT listener, for example ws://host:8083/mqtt or wss://host:8084/mqtt.'))
+      : t('sidebar.mqttHelper');
+    const multiTopicNote = appState.locale === 'zh-CN'
+      ? '多主题格式：每行 topic 或 topic | sourceId。sourceId 用于绑定项目 sources 中的解析器。'
+      : 'Multi-topic format: one topic per line, or topic | sourceId.';
+
+    return `
+      <div class="mqtt-config-grid">
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.mqttVersion')}</div>
+          <select class="form-select" id="drv-mqtt-version">
+            ${['3.1', '3.1.1', '5.0'].map((v) => `<option ${cfg.version === v ? 'selected' : ''} value="${v}">MQTT ${v}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.mode')}</div>
+          <select class="form-select" id="drv-mqtt-mode">
+            ${[
+              ['PubSub', t('sidebar.subscribePublish')],
+              ['SubscribeOnly', t('sidebar.subscribeOnly')],
+              ['PublishOnly', t('sidebar.publishOnly')]
+            ].map(([value, label]) => `<option ${cfg.mode === value ? 'selected' : ''} value="${value}">${label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-row" style="grid-column:1 / -1">
+          <div class="form-label">${appState.locale === 'zh-CN' ? '连接方式' : 'Connection Type'}</div>
+          <select class="form-select" id="drv-mqtt-transport" ${isDesktop ? '' : 'disabled'}>
+            <option value="websocket" ${transport === 'websocket' ? 'selected' : ''}>MQTT over WebSocket (WS/WSS)</option>
+            ${isDesktop ? `<option value="tcp" ${transport === 'tcp' ? 'selected' : ''}>MQTT TCP 直连 (mqtt://1883)</option>` : ''}
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.qos')}</div>
+          <select class="form-select" id="drv-mqtt-qos">
+            ${[
+              [0, t('sidebar.atMostOnce')],
+              [1, t('sidebar.atLeastOnce')],
+              [2, t('sidebar.exactlyOnce')]
+            ].map(([value, label]) => `<option ${Number(cfg.qos) === value ? 'selected' : ''} value="${value}">${label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.keepAlive')}</div>
+          <input class="form-input" id="drv-mqtt-keepalive" type="number" min="5" max="3600" value="${cfg.keepalive ?? 60}">
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.host')}</div>
+          <input class="form-input" id="drv-mqtt-host" value="${host}" placeholder="broker.example.com">
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.port')}</div>
+          <input class="form-input" id="drv-mqtt-port" type="number" min="1" max="65535" value="${port}">
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.topic')}</div>
+          <input class="form-input" id="drv-mqtt-topic" value="${cfg.topic || ''}" placeholder="sensor/data">
+        </div>
+        <div class="form-row" style="grid-column:1 / -1">
+          <div class="form-label">${appState.locale === 'zh-CN' ? '订阅主题列表' : 'Subscriptions'}</div>
+          <textarea class="form-input mono" id="drv-mqtt-subscriptions" rows="4" placeholder="bearing/v2/data | bearing-v2&#10;gearbox/data | gearbox">${subscriptionLines}</textarea>
+        </div>
+        ${isTcp ? '' : `
+          <div class="form-row">
+            <div class="form-label">${t('sidebar.websocketPath')}</div>
+            <input class="form-input" id="drv-mqtt-path" value="${path}" placeholder="/mqtt">
+          </div>
+        `}
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.username')}</div>
+          <input class="form-input" id="drv-mqtt-user" value="${cfg.username || ''}" placeholder="${t('sidebar.optional')}">
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.password')}</div>
+          <input class="form-input" id="drv-mqtt-pass" type="password" value="${cfg.password || ''}" placeholder="${t('sidebar.optional')}">
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.clientId')}</div>
+          <input class="form-input mono" id="drv-mqtt-clientid" value="${cfg.clientId || ''}" placeholder="mems-cms-client">
+        </div>
+        <div class="form-row mqtt-toggles">
+          <label class="checkbox-wrap">
+            <input type="checkbox" id="drv-mqtt-ssl" ${cfg.useSSL ? 'checked' : ''}>
+            <span>${t('sidebar.enableSsl')}</span>
+          </label>
+          <label class="checkbox-wrap">
+            <input type="checkbox" id="drv-mqtt-clean" ${cfg.clean !== false ? 'checked' : ''}>
+            <span>${t('sidebar.cleanSession')}</span>
+          </label>
+          <label class="checkbox-wrap">
+            <input type="checkbox" id="drv-mqtt-retain" ${cfg.retain ? 'checked' : ''}>
+            <span>${t('sidebar.retainPublish')}</span>
+          </label>
+        </div>
+      </div>
+      <div class="mqtt-helper-card">
+        <div class="mqtt-helper-title">${isDesktop ? (appState.locale === 'zh-CN' ? 'MQTT 连接地址' : 'MQTT Connection URL') : t('sidebar.browserEndpoint')}</div>
+        <div class="mqtt-helper-url mono">${preview}</div>
+        <div class="mqtt-helper-note">${connectionNote} ${multiTopicNote}</div>
+      </div>`;
+  }
+
+  _bindMqttConfigPanel(panel) {
+    const defaultPortFor = (transport, useSSL) => (
+      transport === 'tcp' ? (useSSL ? 8883 : 1883) : (useSSL ? 8084 : 8083)
+    );
+    const buildBrokerUrl = (next) => {
+      if (!next.host) return '';
+      if (next.transport === 'tcp') {
+        return `${next.useSSL ? 'mqtts' : 'mqtt'}://${next.host}:${next.port}`;
+      }
+      return `${next.useSSL ? 'wss' : 'ws'}://${next.host}:${next.port}${next.path}`;
+    };
+    const update = (rerender = false) => {
+      const transport = panel.querySelector('#drv-mqtt-transport')?.value || 'websocket';
+      const useSSL = !!panel.querySelector('#drv-mqtt-ssl')?.checked;
+      const rawPort = parseInt(panel.querySelector('#drv-mqtt-port')?.value, 10);
+      const port = Number.isInteger(rawPort) && rawPort >= 1 && rawPort <= 65535
+        ? rawPort
+        : defaultPortFor(transport, useSSL);
+      const rawPath = panel.querySelector('#drv-mqtt-path')?.value?.trim() || appState.mqttConfig.path || '/mqtt';
+      const effectivePath = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+      const next = {
+        transport,
+        version: panel.querySelector('#drv-mqtt-version')?.value || '3.1.1',
+        mode: panel.querySelector('#drv-mqtt-mode')?.value || 'PubSub',
+        qos: parseInt(panel.querySelector('#drv-mqtt-qos')?.value, 10) || 0,
+        keepalive: Math.max(5, parseInt(panel.querySelector('#drv-mqtt-keepalive')?.value, 10) || 60),
+        host: panel.querySelector('#drv-mqtt-host')?.value?.trim() || '',
+        port,
+        topic: panel.querySelector('#drv-mqtt-topic')?.value?.trim() || '',
+        subscriptions: this._parseMqttSubscriptionLines(panel.querySelector('#drv-mqtt-subscriptions')?.value || ''),
+        path: effectivePath,
+        username: panel.querySelector('#drv-mqtt-user')?.value || '',
+        password: panel.querySelector('#drv-mqtt-pass')?.value || '',
+        clientId: panel.querySelector('#drv-mqtt-clientid')?.value?.trim() || '',
+        useSSL,
+        clean: !!panel.querySelector('#drv-mqtt-clean')?.checked,
+        retain: !!panel.querySelector('#drv-mqtt-retain')?.checked
+      };
+      next.brokerUrl = buildBrokerUrl(next);
+      appState.updateMqttConfig(next);
+
+      const portInput = panel.querySelector('#drv-mqtt-port');
+      if (portInput && portInput.value !== String(next.port)) portInput.value = String(next.port);
+      const preview = panel.querySelector('.mqtt-helper-url');
+      if (preview) preview.textContent = next.brokerUrl || t('sidebar.waitingForHost');
+      if (rerender) this._updateDriverPanel();
+    };
+
+    panel.querySelectorAll('#drv-mqtt-version, #drv-mqtt-mode, #drv-mqtt-transport, #drv-mqtt-qos, #drv-mqtt-keepalive, #drv-mqtt-host, #drv-mqtt-port, #drv-mqtt-topic, #drv-mqtt-subscriptions, #drv-mqtt-path, #drv-mqtt-user, #drv-mqtt-pass, #drv-mqtt-clientid, #drv-mqtt-ssl, #drv-mqtt-clean, #drv-mqtt-retain')
+      .forEach((el) => {
+        if (!el) return;
+        const eventName = el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input';
+        const shouldRerender = el.id === 'drv-mqtt-transport';
+        el.addEventListener(eventName, () => update(shouldRerender));
+      });
+  }
+
+  _buildMqttConfigPanel(cfg) {
+    const isDesktop = !!window.memsCmsDesktop;
+    const transport = isDesktop ? 'tcp' : 'websocket';
+    const isTcp = transport === 'tcp';
+    const path = cfg.path || '/mqtt';
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    const host = cfg.host || '';
+    const useSSL = isDesktop ? false : !!cfg.useSSL;
+    const port = isDesktop ? 1883 : (Number(cfg.port) || (useSSL ? 8084 : 8083));
+    const preview = host
+      ? (isTcp ? `mqtt://${host}:1883` : `${useSSL ? 'wss' : 'ws'}://${host}:${port}${normalizedPath}`)
+      : t('sidebar.waitingForHost');
+    const subscriptionLines = Array.isArray(cfg.subscriptions)
+      ? cfg.subscriptions.map((subscription) => {
+        if (typeof subscription === 'string') return subscription;
+        const topic = subscription.topic || subscription.mqttTopic || '';
+        const sourceId = subscription.sourceId ?? subscription.source ?? '';
+        return sourceId ? `${topic} | ${sourceId}` : topic;
+      }).filter(Boolean).join('\n')
+      : '';
+    const note = isDesktop
+      ? (appState.locale === 'zh-CN'
+        ? '软件端使用 Electron/Node 直接连接 MQTT TCP 1883 端口，例如 mqtt://host:1883。默认不启用 SSL/TLS，不需要 Broker 的 WebSocket MQTT 端口。'
+        : 'The desktop app connects directly to MQTT TCP port 1883, for example mqtt://host:1883. SSL/TLS is disabled by default and a WebSocket MQTT listener is not required.')
+      : t('sidebar.mqttHelper');
+    const multiTopicNote = appState.locale === 'zh-CN'
+      ? '多主题格式：每行 topic 或 topic | sourceId。sourceId 用于绑定项目 sources 中的解析器。'
+      : 'Multi-topic format: one topic per line, or topic | sourceId.';
+
+    return `
+      <div class="mqtt-config-grid">
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.mqttVersion')}</div>
+          <select class="form-select" id="drv-mqtt-version">
+            ${['3.1', '3.1.1', '5.0'].map((v) => `<option ${cfg.version === v ? 'selected' : ''} value="${v}">MQTT ${v}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.mode')}</div>
+          <select class="form-select" id="drv-mqtt-mode">
+            ${[
+              ['PubSub', t('sidebar.subscribePublish')],
+              ['SubscribeOnly', t('sidebar.subscribeOnly')],
+              ['PublishOnly', t('sidebar.publishOnly')]
+            ].map(([value, label]) => `<option ${cfg.mode === value ? 'selected' : ''} value="${value}">${label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-row" style="grid-column:1 / -1">
+          <div class="form-label">${appState.locale === 'zh-CN' ? '连接方式' : 'Connection Type'}</div>
+          <input class="form-input" id="drv-mqtt-transport" value="${isDesktop ? 'MQTT TCP 直连 (mqtt://1883)' : 'MQTT over WebSocket (WS/WSS)'}" disabled data-transport="${transport}">
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.qos')}</div>
+          <select class="form-select" id="drv-mqtt-qos">
+            ${[
+              [0, t('sidebar.atMostOnce')],
+              [1, t('sidebar.atLeastOnce')],
+              [2, t('sidebar.exactlyOnce')]
+            ].map(([value, label]) => `<option ${Number(cfg.qos) === value ? 'selected' : ''} value="${value}">${label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.keepAlive')}</div>
+          <input class="form-input" id="drv-mqtt-keepalive" type="number" min="5" max="3600" value="${cfg.keepalive ?? 60}">
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.host')}</div>
+          <input class="form-input" id="drv-mqtt-host" value="${host}" placeholder="broker.example.com">
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.port')}</div>
+          <input class="form-input" id="drv-mqtt-port" type="number" min="1" max="65535" value="${port}" ${isDesktop ? 'disabled' : ''}>
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.topic')}</div>
+          <input class="form-input" id="drv-mqtt-topic" value="${cfg.topic || ''}" placeholder="sensor/data">
+        </div>
+        <div class="form-row" style="grid-column:1 / -1">
+          <div class="form-label">${appState.locale === 'zh-CN' ? '订阅主题列表' : 'Subscriptions'}</div>
+          <textarea class="form-input mono" id="drv-mqtt-subscriptions" rows="4" placeholder="bearing/v2/data | bearing-v2&#10;gearbox/data | gearbox">${subscriptionLines}</textarea>
+        </div>
+        ${isDesktop ? '' : `
+          <div class="form-row">
+            <div class="form-label">${t('sidebar.websocketPath')}</div>
+            <input class="form-input" id="drv-mqtt-path" value="${path}" placeholder="/mqtt">
+          </div>
+        `}
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.username')}</div>
+          <input class="form-input" id="drv-mqtt-user" value="${cfg.username || ''}" placeholder="${t('sidebar.optional')}">
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.password')}</div>
+          <input class="form-input" id="drv-mqtt-pass" type="password" value="${cfg.password || ''}" placeholder="${t('sidebar.optional')}">
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.clientId')}</div>
+          <input class="form-input mono" id="drv-mqtt-clientid" value="${cfg.clientId || ''}" placeholder="mems-cms-client">
+        </div>
+        <div class="form-row mqtt-toggles">
+          <label class="checkbox-wrap">
+            <input type="checkbox" id="drv-mqtt-clean" ${cfg.clean !== false ? 'checked' : ''}>
+            <span>${t('sidebar.cleanSession')}</span>
+          </label>
+          <label class="checkbox-wrap">
+            <input type="checkbox" id="drv-mqtt-retain" ${cfg.retain ? 'checked' : ''}>
+            <span>${t('sidebar.retainPublish')}</span>
+          </label>
+        </div>
+      </div>
+      <div class="mqtt-helper-card">
+        <div class="mqtt-helper-title">${isDesktop ? (appState.locale === 'zh-CN' ? 'MQTT 连接地址' : 'MQTT Connection URL') : t('sidebar.browserEndpoint')}</div>
+        <div class="mqtt-helper-url mono">${preview}</div>
+        <div class="mqtt-helper-note">${note} ${multiTopicNote}</div>
+      </div>`;
+  }
+
+  _bindMqttConfigPanel(panel) {
+    const isDesktop = !!window.memsCmsDesktop;
+    const buildBrokerUrl = (next) => {
+      if (!next.host) return '';
+      if (next.transport === 'tcp') return `mqtt://${next.host}:1883`;
+      return `${next.useSSL ? 'wss' : 'ws'}://${next.host}:${next.port}${next.path}`;
+    };
+    const update = () => {
+      const transport = isDesktop ? 'tcp' : 'websocket';
+      const useSSL = isDesktop ? false : !!panel.querySelector('#drv-mqtt-ssl')?.checked;
+      const rawPort = parseInt(panel.querySelector('#drv-mqtt-port')?.value, 10);
+      const port = isDesktop ? 1883 : (Number.isInteger(rawPort) && rawPort >= 1 && rawPort <= 65535 ? rawPort : (useSSL ? 8084 : 8083));
+      const rawPath = panel.querySelector('#drv-mqtt-path')?.value?.trim() || appState.mqttConfig.path || '/mqtt';
+      const effectivePath = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+      const next = {
+        transport,
+        version: panel.querySelector('#drv-mqtt-version')?.value || '3.1.1',
+        mode: panel.querySelector('#drv-mqtt-mode')?.value || 'PubSub',
+        qos: parseInt(panel.querySelector('#drv-mqtt-qos')?.value, 10) || 0,
+        keepalive: Math.max(5, parseInt(panel.querySelector('#drv-mqtt-keepalive')?.value, 10) || 60),
+        host: panel.querySelector('#drv-mqtt-host')?.value?.trim() || '',
+        port,
+        topic: panel.querySelector('#drv-mqtt-topic')?.value?.trim() || '',
+        subscriptions: this._parseMqttSubscriptionLines(panel.querySelector('#drv-mqtt-subscriptions')?.value || ''),
+        path: effectivePath,
+        username: panel.querySelector('#drv-mqtt-user')?.value || '',
+        password: panel.querySelector('#drv-mqtt-pass')?.value || '',
+        clientId: panel.querySelector('#drv-mqtt-clientid')?.value?.trim() || '',
+        useSSL,
+        clean: !!panel.querySelector('#drv-mqtt-clean')?.checked,
+        retain: !!panel.querySelector('#drv-mqtt-retain')?.checked
+      };
+      next.brokerUrl = buildBrokerUrl(next);
+      appState.updateMqttConfig(next);
+
+      const portInput = panel.querySelector('#drv-mqtt-port');
+      if (portInput && portInput.value !== String(next.port)) portInput.value = String(next.port);
+      const preview = panel.querySelector('.mqtt-helper-url');
+      if (preview) preview.textContent = next.brokerUrl || t('sidebar.waitingForHost');
+    };
+
+    panel.querySelectorAll('#drv-mqtt-version, #drv-mqtt-mode, #drv-mqtt-qos, #drv-mqtt-keepalive, #drv-mqtt-host, #drv-mqtt-topic, #drv-mqtt-subscriptions, #drv-mqtt-user, #drv-mqtt-pass, #drv-mqtt-clientid, #drv-mqtt-clean, #drv-mqtt-retain, #drv-mqtt-path, #drv-mqtt-port, #drv-mqtt-ssl')
+      .forEach((el) => {
+        if (!el || el.disabled) return;
+        const eventName = el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input';
+        el.addEventListener(eventName, update);
+      });
+    update();
+  }
+
+  _buildMqttConfigPanel(cfg) {
+    const isDesktop = !!window.memsCmsDesktop;
+    const path = cfg.path || '/mqtt';
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    const host = cfg.host || '';
+    const useSSL = !!cfg.useSSL;
+    const port = Number(cfg.port) || (isDesktop ? (useSSL ? 8883 : 1883) : (useSSL ? 8084 : 8083));
+    const preview = host
+      ? (isDesktop
+        ? `${useSSL ? 'mqtts' : 'mqtt'}://${host}:${port}`
+        : `${useSSL ? 'wss' : 'ws'}://${host}:${port}${normalizedPath}`)
+      : t('sidebar.waitingForHost');
+    const subscriptionLines = Array.isArray(cfg.subscriptions)
+      ? cfg.subscriptions.map((subscription) => {
+        if (typeof subscription === 'string') return subscription;
+        const topic = subscription.topic || subscription.mqttTopic || '';
+        const sourceId = subscription.sourceId ?? subscription.source ?? '';
+        return sourceId ? `${topic} | ${sourceId}` : topic;
+      }).filter(Boolean).join('\n')
+      : '';
+    const note = isDesktop
+      ? (appState.locale === 'zh-CN'
+        ? '软件端通过 Electron/Node 直接连接 MQTT 服务器。默认端口为 1883；如启用 SSL/TLS，通常使用 8883。此模式不需要 WebSocket 路径。'
+        : 'The desktop app connects directly to the MQTT broker through Electron/Node. The default port is 1883; SSL/TLS commonly uses 8883. No WebSocket path is required.')
+      : t('sidebar.mqttHelper');
+    const multiTopicNote = appState.locale === 'zh-CN'
+      ? '多主题格式：每行 topic 或 topic | sourceId。sourceId 用于绑定项目 sources 中的解析器。'
+      : 'Multi-topic format: one topic per line, or topic | sourceId.';
+
+    return `
+      <div class="mqtt-config-grid">
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.mqttVersion')}</div>
+          <select class="form-select" id="drv-mqtt-version">
+            ${['3.1', '3.1.1', '5.0'].map((v) => `<option ${cfg.version === v ? 'selected' : ''} value="${v}">MQTT ${v}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.mode')}</div>
+          <select class="form-select" id="drv-mqtt-mode">
+            ${[
+              ['PubSub', t('sidebar.subscribePublish')],
+              ['SubscribeOnly', t('sidebar.subscribeOnly')],
+              ['PublishOnly', t('sidebar.publishOnly')]
+            ].map(([value, label]) => `<option ${cfg.mode === value ? 'selected' : ''} value="${value}">${label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.qos')}</div>
+          <select class="form-select" id="drv-mqtt-qos">
+            ${[
+              [0, t('sidebar.atMostOnce')],
+              [1, t('sidebar.atLeastOnce')],
+              [2, t('sidebar.exactlyOnce')]
+            ].map(([value, label]) => `<option ${Number(cfg.qos) === value ? 'selected' : ''} value="${value}">${label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.keepAlive')}</div>
+          <input class="form-input" id="drv-mqtt-keepalive" type="number" min="5" max="3600" value="${cfg.keepalive ?? 60}">
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.host')}</div>
+          <input class="form-input" id="drv-mqtt-host" value="${host}" placeholder="broker.example.com">
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.port')}</div>
+          <input class="form-input" id="drv-mqtt-port" type="number" min="1" max="65535" value="${port}">
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.topic')}</div>
+          <input class="form-input" id="drv-mqtt-topic" value="${cfg.topic || ''}" placeholder="sensor/data">
+        </div>
+        <div class="form-row" style="grid-column:1 / -1">
+          <div class="form-label">${appState.locale === 'zh-CN' ? '订阅主题列表' : 'Subscriptions'}</div>
+          <textarea class="form-input mono" id="drv-mqtt-subscriptions" rows="4" placeholder="bearing/v2/data | bearing-v2&#10;gearbox/data | gearbox">${subscriptionLines}</textarea>
+        </div>
+        ${isDesktop ? '' : `
+          <div class="form-row">
+            <div class="form-label">${t('sidebar.websocketPath')}</div>
+            <input class="form-input" id="drv-mqtt-path" value="${path}" placeholder="/mqtt">
+          </div>
+        `}
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.username')}</div>
+          <input class="form-input" id="drv-mqtt-user" value="${cfg.username || ''}" placeholder="${t('sidebar.optional')}">
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.password')}</div>
+          <input class="form-input" id="drv-mqtt-pass" type="password" value="${cfg.password || ''}" placeholder="${t('sidebar.optional')}">
+        </div>
+        <div class="form-row">
+          <div class="form-label">${t('sidebar.clientId')}</div>
+          <input class="form-input mono" id="drv-mqtt-clientid" value="${cfg.clientId || ''}" placeholder="mems-cms-client">
+        </div>
+        <div class="form-row mqtt-toggles">
+          <label class="checkbox-wrap">
+            <input type="checkbox" id="drv-mqtt-ssl" ${useSSL ? 'checked' : ''}>
+            <span>${t('sidebar.enableSsl')}</span>
+          </label>
+          <label class="checkbox-wrap">
+            <input type="checkbox" id="drv-mqtt-clean" ${cfg.clean !== false ? 'checked' : ''}>
+            <span>${t('sidebar.cleanSession')}</span>
+          </label>
+          <label class="checkbox-wrap">
+            <input type="checkbox" id="drv-mqtt-retain" ${cfg.retain ? 'checked' : ''}>
+            <span>${t('sidebar.retainPublish')}</span>
+          </label>
+        </div>
+      </div>
+      <div class="mqtt-helper-card">
+        <div class="mqtt-helper-title">${isDesktop ? (appState.locale === 'zh-CN' ? 'MQTT 连接地址' : 'MQTT Connection URL') : t('sidebar.browserEndpoint')}</div>
+        <div class="mqtt-helper-url mono">${preview}</div>
+        <div class="mqtt-helper-note">${note} ${multiTopicNote}</div>
+      </div>`;
+  }
+
+  _bindMqttConfigPanel(panel) {
+    const isDesktop = !!window.memsCmsDesktop;
+    const buildBrokerUrl = (next) => {
+      if (!next.host) return '';
+      if (next.transport === 'tcp') {
+        return `${next.useSSL ? 'mqtts' : 'mqtt'}://${next.host}:${next.port}`;
+      }
+      return `${next.useSSL ? 'wss' : 'ws'}://${next.host}:${next.port}${next.path}`;
+    };
+    const update = () => {
+      const transport = isDesktop ? 'tcp' : 'websocket';
+      const useSSL = !!panel.querySelector('#drv-mqtt-ssl')?.checked;
+      const rawPort = parseInt(panel.querySelector('#drv-mqtt-port')?.value, 10);
+      const port = Number.isInteger(rawPort) && rawPort >= 1 && rawPort <= 65535
+        ? rawPort
+        : (isDesktop ? (useSSL ? 8883 : 1883) : (useSSL ? 8084 : 8083));
+      const rawPath = panel.querySelector('#drv-mqtt-path')?.value?.trim() || appState.mqttConfig.path || '/mqtt';
+      const effectivePath = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+      const next = {
+        transport,
+        version: panel.querySelector('#drv-mqtt-version')?.value || '3.1.1',
+        mode: panel.querySelector('#drv-mqtt-mode')?.value || 'PubSub',
+        qos: parseInt(panel.querySelector('#drv-mqtt-qos')?.value, 10) || 0,
+        keepalive: Math.max(5, parseInt(panel.querySelector('#drv-mqtt-keepalive')?.value, 10) || 60),
+        host: panel.querySelector('#drv-mqtt-host')?.value?.trim() || '',
+        port,
+        topic: panel.querySelector('#drv-mqtt-topic')?.value?.trim() || '',
+        subscriptions: this._parseMqttSubscriptionLines(panel.querySelector('#drv-mqtt-subscriptions')?.value || ''),
+        path: effectivePath,
+        username: panel.querySelector('#drv-mqtt-user')?.value || '',
+        password: panel.querySelector('#drv-mqtt-pass')?.value || '',
+        clientId: panel.querySelector('#drv-mqtt-clientid')?.value?.trim() || '',
+        useSSL,
+        clean: !!panel.querySelector('#drv-mqtt-clean')?.checked,
+        retain: !!panel.querySelector('#drv-mqtt-retain')?.checked
+      };
+      next.brokerUrl = buildBrokerUrl(next);
+      appState.updateMqttConfig(next);
+
+      const portInput = panel.querySelector('#drv-mqtt-port');
+      if (portInput && portInput.value !== String(next.port)) portInput.value = String(next.port);
+      const preview = panel.querySelector('.mqtt-helper-url');
+      if (preview) preview.textContent = next.brokerUrl || t('sidebar.waitingForHost');
+    };
+
+    panel.querySelectorAll('#drv-mqtt-version, #drv-mqtt-mode, #drv-mqtt-qos, #drv-mqtt-keepalive, #drv-mqtt-host, #drv-mqtt-port, #drv-mqtt-topic, #drv-mqtt-subscriptions, #drv-mqtt-user, #drv-mqtt-pass, #drv-mqtt-clientid, #drv-mqtt-ssl, #drv-mqtt-clean, #drv-mqtt-retain, #drv-mqtt-path')
+      .forEach((el) => {
+        if (!el) return;
+        const eventName = el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input';
+        el.addEventListener(eventName, update);
+      });
+    update();
+  }
+
+  _udpHelperUrl(cfg, isGateway = cfg.mode === 'gateway') {
+    const isDesktop = !!window.memsCmsDesktop;
+    if (isGateway) {
+      return isDesktop
+        ? (appState.locale === 'zh-CN' ? 'Electron 内置 Node UDP 网关：ws://localhost:8765' : 'Built-in Electron Node UDP gateway: ws://localhost:8765')
+        : 'python scripts/multi_udp_gateway.py --config scripts/multi_udp_gateway.json';
+    }
+    const localHost = cfg.localHost || '0.0.0.0';
+    const localPort = cfg.localPort || 4000;
+    const remoteHost = cfg.remoteHost || '192.168.1.252';
+    const remotePort = cfg.remotePort || 1030;
+    return isDesktop
+      ? (appState.locale === 'zh-CN'
+        ? `Electron 内置 UDP 桥接：监听 ${localHost}:${localPort} -> ${remoteHost}:${remotePort}`
+        : `Built-in UDP bridge: listen ${localHost}:${localPort} -> ${remoteHost}:${remotePort}`)
+      : `python scripts/udp_ws_bridge.py --local-host ${localHost} --local-port ${localPort} --remote-host ${remoteHost} --remote-port ${remotePort}`;
+  }
+
+  _udpHelperNote(isGateway) {
+    const isDesktop = !!window.memsCmsDesktop;
+    if (isGateway) {
+      if (isDesktop && appState.locale === 'zh-CN') {
+        return '桌面版会自动启动 Node UDP 网关；设备编号、序号提取和监听端口由网关 JSON 配置管理。';
+      }
+      return appState.locale === 'zh-CN'
+        ? '设备编号、序号提取和监听端口由 JSON 配置文件管理。修改配置后请重启网关。'
+        : 'Device IDs, sequence extraction and listen ports are managed by JSON. Restart the gateway after editing it.';
+    }
+    if (isDesktop && appState.locale === 'zh-CN') {
+      return '软件内置 UDP 桥接服务，连接后会把本机监听端口收到的 UDP 数据转发到仪表盘。';
+    }
+    return t('sidebar.udpHelper');
+  }
+
   _buildUdpConfigPanel(cfg) {
     const isGateway = cfg.mode === 'gateway';
     const commandTargets = Array.isArray(this._gatewayStatus?.devices) ? this._gatewayStatus.devices : [];
@@ -479,19 +1049,15 @@ export class Sidebar {
       </div>
       <div class="mqtt-helper-card">
         <div class="mqtt-helper-title">${isGateway ? gatewayLabel : t('sidebar.udpBridge')}</div>
-        <div class="mqtt-helper-url mono">${isGateway
-          ? 'python scripts/multi_udp_gateway.py --config scripts/multi_udp_gateway.json'
-          : `python scripts/udp_ws_bridge.py --local-port ${cfg.localPort || 4000} --remote-host ${cfg.remoteHost || '192.168.1.252'} --remote-port ${cfg.remotePort || 1030}`}</div>
-        <div class="mqtt-helper-note">${isGateway
-          ? (appState.locale === 'zh-CN' ? '设备编号、序号提取和监听端口由 JSON 配置文件管理。修改配置后请重启网关。' : 'Device IDs, sequence extraction and listen ports are managed by JSON. Restart the gateway after editing it.')
-          : t('sidebar.udpHelper')}</div>
+        <div class="mqtt-helper-url mono">${this._udpHelperUrl(cfg, isGateway)}</div>
+        <div class="mqtt-helper-note">${this._udpHelperNote(isGateway)}</div>
       </div>
       ${isGateway ? '<div class="gateway-status-card" id="gateway-status-card"></div>' : ''}`;
   }
 
   _bindUdpConfigPanel(panel) {
     const update = () => {
-      appState.updateUdpConfig({
+      const next = {
         mode: panel.querySelector('#drv-udp-mode')?.value || 'legacy',
         commandSourceId: panel.querySelector('#drv-udp-command-source')?.value || appState.udpConfig.commandSourceId || '',
         bridgeUrl: panel.querySelector('#drv-udp-bridge')?.value?.trim() || 'ws://localhost:8765',
@@ -499,7 +1065,10 @@ export class Sidebar {
         remotePort: Math.max(1, parseInt(panel.querySelector('#drv-udp-remote-port')?.value, 10) || appState.udpConfig.remotePort || 1030),
         localHost: panel.querySelector('#drv-udp-local-host')?.value?.trim() || appState.udpConfig.localHost || '0.0.0.0',
         localPort: Math.max(1, parseInt(panel.querySelector('#drv-udp-local-port')?.value, 10) || appState.udpConfig.localPort || 4000)
-      });
+      };
+      appState.updateUdpConfig(next);
+      const helperUrl = panel.querySelector('.mqtt-helper-url');
+      if (helperUrl) helperUrl.textContent = this._udpHelperUrl(next, next.mode === 'gateway');
     };
 
     panel.querySelector('#drv-udp-mode')?.addEventListener('change', (event) => {
@@ -603,6 +1172,7 @@ export class Sidebar {
   }
 
   _updateDriverPanel() {
+    this._syncBusButtons();
     const panel = this._container.querySelector('#driver-panel');
     if (!panel) return;
 
@@ -611,12 +1181,17 @@ export class Sidebar {
 
     if (bus === BusType.Serial) {
       const cfg = appState.serialConfig;
+      const customBaud = !SERIAL_BAUD_RATES.includes(Number(cfg.baudRate));
       html = `<div class="sidebar-section-label">${t('sidebar.serialConfiguration')}</div><div class="driver-config">
         <div class="form-row">
           <div class="form-label">${t('sidebar.baudRate')}</div>
-          <select class="form-select" id="drv-baud">
-            ${[300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600].map((b) => `<option ${b === cfg.baudRate ? 'selected' : ''} value="${b}">${b}</option>`).join('')}
-          </select>
+          <div class="driver-baud-grid ${customBaud ? '' : 'single'}">
+            <select class="form-select" id="drv-baud">
+              ${SERIAL_BAUD_RATES.map((b) => `<option ${b === cfg.baudRate ? 'selected' : ''} value="${b}">${b}</option>`).join('')}
+              <option value="custom" ${customBaud ? 'selected' : ''}>${appState.locale === 'zh-CN' ? '\u81ea\u5b9a\u4e49' : 'Custom'}</option>
+            </select>
+            <input class="form-input" type="number" min="1" id="drv-baud-custom" value="${Number(cfg.baudRate) || 115200}" placeholder="115200" ${customBaud ? '' : 'hidden'}>
+          </div>
         </div>
         <div class="form-row">
           <div class="form-label">${t('sidebar.dataBits')}</div>
@@ -654,12 +1229,24 @@ export class Sidebar {
     panel.innerHTML = html;
 
     if (bus === BusType.Serial) {
-      ['baud', 'databits', 'stopbits', 'parity'].forEach((id) => {
+      const readBaudRate = () => {
+        const selected = panel.querySelector('#drv-baud')?.value || '115200';
+        const custom = parseInt(panel.querySelector('#drv-baud-custom')?.value, 10);
+        return selected === 'custom' ? (custom || 115200) : (parseInt(selected, 10) || 115200);
+      };
+      const syncCustomBaudVisibility = () => {
+        const customInput = panel.querySelector('#drv-baud-custom');
+        if (customInput) customInput.hidden = panel.querySelector('#drv-baud')?.value !== 'custom';
+        panel.querySelector('.driver-baud-grid')?.classList.toggle('single', panel.querySelector('#drv-baud')?.value !== 'custom');
+      };
+      ['baud', 'baud-custom', 'databits', 'stopbits', 'parity'].forEach((id) => {
         const el = panel.querySelector(`#drv-${id}`);
         if (el) {
-          el.addEventListener('change', () => {
+          const eventName = id === 'baud-custom' ? 'input' : 'change';
+          el.addEventListener(eventName, () => {
+            if (id === 'baud') syncCustomBaudVisibility();
             appState.updateSerialConfig({
-              baudRate: parseInt(panel.querySelector('#drv-baud')?.value, 10) || 115200,
+              baudRate: readBaudRate(),
               dataBits: parseInt(panel.querySelector('#drv-databits')?.value, 10) || 8,
               stopBits: parseInt(panel.querySelector('#drv-stopbits')?.value, 10) || 1,
               parity: panel.querySelector('#drv-parity')?.value || 'none'
@@ -667,6 +1254,7 @@ export class Sidebar {
           });
         }
       });
+      syncCustomBaudVisibility();
     } else if (bus === BusType.WebSocket) {
       panel.querySelector('#drv-ws-url')?.addEventListener('change', (e) => appState.updateWsConfig({ url: e.target.value }));
     } else if (bus === BusType.MQTT) {
@@ -674,6 +1262,13 @@ export class Sidebar {
     } else if (bus === BusType.UDP) {
       this._bindUdpConfigPanel(panel);
     }
+  }
+
+  _syncBusButtons() {
+    this._container.querySelectorAll('.bus-btn').forEach((btn) => {
+      btn.classList.toggle('btn-primary', btn.dataset.bus === appState.busType);
+      btn.disabled = appState.isConnected;
+    });
   }
 
   _updateStatusDot() {

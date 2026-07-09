@@ -67,8 +67,10 @@ export class SerialDriver {
     if (!this._port?.writable) throw new Error('Port not writable');
     const writer = this._port.writable.getWriter();
     try {
-      const encoder = new TextEncoder();
-      await writer.write(encoder.encode(data));
+      const payload = data instanceof Uint8Array
+        ? data
+        : (data instanceof ArrayBuffer ? new Uint8Array(data) : new TextEncoder().encode(String(data)));
+      await writer.write(payload);
     } finally {
       writer.releaseLock();
     }

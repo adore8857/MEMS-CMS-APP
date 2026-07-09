@@ -4,7 +4,7 @@
 import { eventBus } from '../core/EventBus.js';
 import { appState, ConnectionState } from '../core/AppState.js';
 import { t } from '../core/i18n.js';
-import { FrameParser } from '../core/FrameParser.js?v=fft-analysis-20260525-1';
+import { FrameParser } from '../core/FrameParser.js?v=full-frame-parser-20260708-1';
 
 export class DataSimulator {
   constructor() {

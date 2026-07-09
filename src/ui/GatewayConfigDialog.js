@@ -1,4 +1,4 @@
-/** GatewayConfigDialog - live configuration editor for multi_udp_gateway.py. */
+/** GatewayConfigDialog - live configuration editor for the multi-UDP gateway. */
 import { eventBus } from '../core/EventBus.js';
 import { appState } from '../core/AppState.js';
 

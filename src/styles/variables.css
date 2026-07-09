@@ -1,21 +1,21 @@
-/* ═══════════════════════════════════════════════════════════
-   Web Serial Studio — Design Tokens
-   ═══════════════════════════════════════════════════════════ */
+﻿/* ══════════════════════════════════════════════════════════�?
+   Web Serial Studio �?Design Tokens
+   ══════════════════════════════════════════════════════════�?*/
 
 :root {
   /* ── Background Layers ── */
-  --bg-primary: #060a13;
-  --bg-secondary: #0c1220;
-  --bg-tertiary: #141c2e;
-  --bg-elevated: #1a2540;
-  --bg-surface: #1e2a45;
+  --bg-primary: #0b111d;
+  --bg-secondary: #101827;
+  --bg-tertiary: #172235;
+  --bg-elevated: #1e2b42;
+  --bg-surface: #24324b;
 
   /* ── Accent Colors ── */
-  --accent-blue: #3b82f6;
-  --accent-blue-dim: #2563eb;
-  --accent-blue-glow: rgba(59, 130, 246, 0.25);
-  --accent-cyan: #06b6d4;
-  --accent-cyan-dim: #0891b2;
+  --accent-blue: #004769;
+  --accent-blue-dim: #00364f;
+  --accent-blue-glow: rgba(0, 71, 105, 0.34);
+  --accent-cyan: #006b88;
+  --accent-cyan-dim: #005269;
   --accent-green: #10b981;
   --accent-green-dim: #059669;
   --accent-green-glow: rgba(16, 185, 129, 0.3);
@@ -28,38 +28,38 @@
   --accent-pink: #ec4899;
 
   /* ── Text ── */
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --text-disabled: #475569;
+  --text-primary: #f7fbff;
+  --text-secondary: #c2d0df;
+  --text-muted: #9aaabd;
+  --text-disabled: #6d7d90;
   --text-inverse: #0f172a;
 
   /* ── Borders ── */
-  --border-subtle: rgba(148, 163, 184, 0.08);
-  --border-default: rgba(148, 163, 184, 0.12);
-  --border-strong: rgba(148, 163, 184, 0.2);
-  --border-accent: rgba(59, 130, 246, 0.4);
+  --border-subtle: rgba(194, 208, 223, 0.1);
+  --border-default: rgba(194, 208, 223, 0.16);
+  --border-strong: rgba(194, 208, 223, 0.26);
+  --border-accent: rgba(0, 71, 105, 0.62);
 
   /* ── Toolbar ── */
-  --toolbar-top: #0e1525;
-  --toolbar-bottom: #0a1020;
-  --toolbar-border: rgba(148, 163, 184, 0.1);
-  --toolbar-section-border: rgba(148, 163, 184, 0.06);
+  --toolbar-top: #101827;
+  --toolbar-bottom: #101827;
+  --toolbar-border: rgba(194, 208, 223, 0.13);
+  --toolbar-section-border: rgba(194, 208, 223, 0.08);
 
   /* ── Sidebar ── */
-  --sidebar-bg: #0b1020;
-  --sidebar-border: rgba(148, 163, 184, 0.08);
+  --sidebar-bg: #0d1422;
+  --sidebar-border: rgba(194, 208, 223, 0.12);
   --sidebar-section-label: var(--accent-cyan);
 
   /* ── Widget ── */
-  --widget-bg: rgba(12, 18, 32, 0.85);
-  --widget-header: rgba(20, 28, 46, 0.95);
-  --widget-border: rgba(148, 163, 184, 0.1);
-  --widget-hover-border: rgba(59, 130, 246, 0.3);
-  --panel-bg: rgba(20, 28, 46, 0.4);
-  --panel-elevated: rgba(12, 18, 32, 0.52);
+  --widget-bg: #111a2a;
+  --widget-header: #182337;
+  --widget-border: rgba(194, 208, 223, 0.14);
+  --widget-hover-border: rgba(0, 71, 105, 0.72);
+  --panel-bg: #141f31;
+  --panel-elevated: #111a2a;
   --code-bg: rgba(6, 10, 19, 0.9);
-  --dashboard-header-bg: rgba(12, 18, 32, 0.92);
+  --dashboard-header-bg: #111a2a;
   --dashboard-grid-line: rgba(148, 163, 184, 0.03);
   --chart-grid-major: rgba(148, 163, 184, 0.08);
   --chart-grid-minor: rgba(148, 163, 184, 0.035);
@@ -68,16 +68,16 @@
   --chart-legend-text: #cbd5e1;
   --chart-legend-muted: #94a3b8;
   --chart-line-width: 2.2;
-  --chart-crosshair: rgba(59, 130, 246, 0.18);
-  --dashboard-empty-card-bg: rgba(59, 130, 246, 0.06);
-  --dashboard-empty-card-border: rgba(59, 130, 246, 0.12);
+  --chart-crosshair: rgba(0, 71, 105, 0.18);
+  --dashboard-empty-card-bg: #182337;
+  --dashboard-empty-card-border: rgba(194, 208, 223, 0.14);
   --console-bar-bg: rgba(12, 18, 32, 0.5);
   --console-output-bg: var(--bg-primary);
   --console-output-text: var(--accent-green);
   --chart-tooltip-bg: rgba(12, 18, 32, 0.95);
   --chart-tooltip-border: rgba(148, 163, 184, 0.15);
   --chart-tooltip-title: #94a3b8;
-  --chart-tooltip-body: #f1f5f9;
+  --chart-tooltip-body: #f7fbff;
   --table-header-bg: rgba(20, 28, 46, 0.5);
   --gauge-track: rgba(51, 65, 85, 0.42);
   --gauge-track-glow: rgba(15, 23, 42, 0.12);
@@ -89,8 +89,8 @@
   --gauge-value-shadow: 0 10px 18px rgba(15, 23, 42, 0.22);
 
   /* ── Input / Form ── */
-  --input-bg: rgba(14, 21, 37, 0.8);
-  --input-border: rgba(148, 163, 184, 0.15);
+  --input-bg: #0f1726;
+  --input-border: rgba(194, 208, 223, 0.2);
   --input-focus-border: var(--accent-blue);
   --input-placeholder: var(--text-muted);
 
@@ -116,8 +116,8 @@
   --scrollbar-thumb-hover: rgba(148, 163, 184, 0.25);
 
   /* ── Typography ── */
-  --font-sans: Helvetica, Arial, 'Microsoft YaHei', '微软雅黑', sans-serif;
-  --font-mono: Helvetica, Arial, 'Microsoft YaHei', '微软雅黑', sans-serif;
+  --font-sans: "Inter", "Segoe UI", Helvetica, Arial, "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Segoe UI", "Microsoft YaHei", monospace;
   --font-size-xs: 0.75rem;     /* 12px */
   --font-size-sm: 0.8125rem;   /* 13px */
   --font-size-base: 0.875rem;  /* 14px */
@@ -153,7 +153,7 @@
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
   --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
-  --shadow-glow-blue: 0 0 20px rgba(59, 130, 246, 0.15);
+  --shadow-glow-blue: 0 0 20px rgba(0, 71, 105, 0.22);
   --shadow-glow-green: 0 0 20px rgba(16, 185, 129, 0.15);
   --shadow-glow-red: 0 0 20px rgba(239, 68, 68, 0.15);
 
@@ -177,20 +177,20 @@
 
   /* ── Layout ── */
   --toolbar-height: 104px;
-  --sidebar-width: 320px;
+  --sidebar-width: 288px;
   --taskbar-height: 40px;
   --widget-header-height: 34px;
   --widget-min-width: 280px;
   --widget-min-height: 200px;
 
   /* ── Dataset Colors ── */
-  --dataset-0: #3b82f6;
+  --dataset-0: #004769;
   --dataset-1: #ef4444;
   --dataset-2: #10b981;
   --dataset-3: #f59e0b;
   --dataset-4: #8b5cf6;
   --dataset-5: #ec4899;
-  --dataset-6: #06b6d4;
+  --dataset-6: #006b88;
   --dataset-7: #f97316;
   --dataset-8: #14b8a6;
   --dataset-9: #6366f1;
@@ -199,58 +199,64 @@
 }
 
 html[data-theme='light'] {
-  --bg-primary: #f5f7fb;
+  --bg-primary: #ffffff;
   --bg-secondary: #ffffff;
-  --bg-tertiary: #eef2f8;
+  --bg-tertiary: #f5f7fa;
   --bg-elevated: #ffffff;
-  --bg-surface: #f8fbff;
+  --bg-surface: #ffffff;
 
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #64748b;
+  --accent-blue: #004769;
+  --accent-blue-dim: #00364f;
+  --accent-blue-glow: rgba(0, 71, 105, 0.2);
+  --accent-cyan: #006b88;
+  --accent-cyan-dim: #005269;
+
+  --text-primary: #000000;
+  --text-secondary: #111111;
+  --text-muted: #4b5563;
   --text-disabled: #94a3b8;
   --text-inverse: #ffffff;
 
-  --border-subtle: rgba(15, 23, 42, 0.06);
-  --border-default: rgba(15, 23, 42, 0.12);
-  --border-strong: rgba(15, 23, 42, 0.18);
-  --border-accent: rgba(59, 130, 246, 0.3);
+  --border-subtle: rgba(28, 45, 70, 0.08);
+  --border-default: rgba(28, 45, 70, 0.14);
+  --border-strong: rgba(28, 45, 70, 0.22);
+  --border-accent: rgba(0, 71, 105, 0.34);
 
   --toolbar-top: #ffffff;
-  --toolbar-bottom: #eef4fb;
-  --toolbar-border: rgba(15, 23, 42, 0.08);
-  --toolbar-section-border: rgba(15, 23, 42, 0.06);
+  --toolbar-bottom: #ffffff;
+  --toolbar-border: rgba(30, 64, 110, 0.13);
+  --toolbar-section-border: rgba(30, 64, 110, 0.09);
 
-  --sidebar-bg: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
-  --sidebar-border: rgba(15, 23, 42, 0.08);
+  --sidebar-bg: #ffffff;
+  --sidebar-border: rgba(30, 64, 110, 0.11);
 
-  --widget-bg: rgba(255, 255, 255, 0.94);
-  --widget-header: rgba(246, 249, 253, 0.98);
-  --widget-border: rgba(148, 163, 184, 0.18);
-  --widget-hover-border: rgba(59, 130, 246, 0.24);
-  --panel-bg: rgba(241, 245, 249, 0.92);
-  --panel-elevated: rgba(255, 255, 255, 0.88);
-  --code-bg: #f6f9fd;
-  --dashboard-header-bg: rgba(255, 255, 255, 0.9);
-  --dashboard-grid-line: rgba(148, 163, 184, 0.08);
-  --chart-grid-major: rgba(148, 163, 184, 0.22);
-  --chart-grid-minor: rgba(148, 163, 184, 0.12);
-  --chart-axis: rgba(100, 116, 139, 0.24);
-  --chart-tick: #64748b;
-  --chart-legend-text: #334155;
-  --chart-legend-muted: #64748b;
+  --widget-bg: #ffffff;
+  --widget-header: #ffffff;
+  --widget-border: rgba(96, 118, 146, 0.2);
+  --widget-hover-border: rgba(0, 71, 105, 0.32);
+  --panel-bg: #ffffff;
+  --panel-elevated: #ffffff;
+  --code-bg: #ffffff;
+  --dashboard-header-bg: #ffffff;
+  --dashboard-grid-line: rgba(82, 111, 148, 0.08);
+  --chart-grid-major: rgba(90, 114, 145, 0.2);
+  --chart-grid-minor: rgba(90, 114, 145, 0.1);
+  --chart-axis: rgba(72, 91, 116, 0.26);
+  --chart-tick: #5a6c83;
+  --chart-legend-text: #27384e;
+  --chart-legend-muted: #596b82;
   --chart-line-width: 2.1;
-  --chart-crosshair: rgba(59, 130, 246, 0.12);
-  --dashboard-empty-card-bg: rgba(255, 255, 255, 0.8);
-  --dashboard-empty-card-border: rgba(96, 165, 250, 0.18);
-  --console-bar-bg: rgba(241, 245, 249, 0.95);
-  --console-output-bg: #f8fbff;
+  --chart-crosshair: rgba(0, 71, 105, 0.12);
+  --dashboard-empty-card-bg: #ffffff;
+  --dashboard-empty-card-border: rgba(0, 71, 105, 0.16);
+  --console-bar-bg: #ffffff;
+  --console-output-bg: #ffffff;
   --console-output-text: #047857;
   --chart-tooltip-bg: rgba(255, 255, 255, 0.98);
   --chart-tooltip-border: rgba(148, 163, 184, 0.24);
   --chart-tooltip-title: #475569;
   --chart-tooltip-body: #0f172a;
-  --table-header-bg: rgba(241, 245, 249, 0.96);
+  --table-header-bg: #ffffff;
   --gauge-track: rgba(203, 213, 225, 0.9);
   --gauge-track-glow: rgba(148, 163, 184, 0.16);
   --gauge-tick: rgba(100, 116, 139, 0.18);
@@ -260,11 +266,11 @@ html[data-theme='light'] {
   --gauge-scale-text: #64748b;
   --gauge-value-shadow: 0 10px 20px rgba(148, 163, 184, 0.18);
 
-  --input-bg: rgba(255, 255, 255, 0.96);
-  --input-border: rgba(148, 163, 184, 0.26);
+  --input-bg: #ffffff;
+  --input-border: rgba(86, 108, 136, 0.24);
 
-  --btn-secondary-bg: rgba(226, 232, 240, 0.78);
-  --btn-secondary-hover: rgba(203, 213, 225, 0.9);
+  --btn-secondary-bg: #ffffff;
+  --btn-secondary-hover: #f5f7fa;
 
   --scrollbar-thumb: rgba(100, 116, 139, 0.2);
   --scrollbar-thumb-hover: rgba(100, 116, 139, 0.35);
@@ -272,8 +278,8 @@ html[data-theme='light'] {
   --glass-bg: rgba(255, 255, 255, 0.82);
   --glass-border: rgba(148, 163, 184, 0.16);
 
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
-  --shadow-md: 0 8px 24px rgba(148, 163, 184, 0.16);
-  --shadow-lg: 0 18px 34px rgba(148, 163, 184, 0.18);
-  --shadow-xl: 0 24px 48px rgba(148, 163, 184, 0.22);
+  --shadow-sm: 0 1px 2px rgba(30, 50, 80, 0.08), 0 1px 0 rgba(255, 255, 255, 0.72) inset;
+  --shadow-md: 0 10px 26px rgba(50, 75, 110, 0.14), 0 1px 0 rgba(255, 255, 255, 0.76) inset;
+  --shadow-lg: 0 18px 38px rgba(50, 75, 110, 0.18), 0 1px 0 rgba(255, 255, 255, 0.76) inset;
+  --shadow-xl: 0 26px 58px rgba(50, 75, 110, 0.22);
 }

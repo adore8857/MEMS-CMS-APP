@@ -1,5 +1,5 @@
 /**
- * DataGridWidget — Live data table widget
+ * DataGridWidget - Live data table widget
  */
 import { WidgetBase } from './WidgetBase.js';
 import { eventBus } from '../core/EventBus.js';
@@ -8,7 +8,7 @@ import { datasetFromFrame } from './datasetSource.js';
 
 export class DataGridWidget extends WidgetBase {
   constructor(config = {}) {
-    super({ title: config.title || 'Data Grid', icon: '▦', spanCols: 2, ...config });
+    super({ title: config.title || 'Data Grid', icon: 'GRID', spanCols: 2, ...config });
     this._datasets = config.datasets || [];
     this._values = {};
     this._cells = {};
@@ -40,10 +40,10 @@ export class DataGridWidget extends WidgetBase {
       tr.innerHTML = `
         <td><span style="color:${color};font-weight:600">${i + 1}</span></td>
         <td>${ds.title}</td>
-        <td class="mono value-cell" style="color:${color}">—</td>
-        <td class="text-muted">${ds.units || '—'}</td>
-        <td class="mono text-muted min-cell">—</td>
-        <td class="mono text-muted max-cell">—</td>`;
+        <td class="mono value-cell" style="color:${color}">--</td>
+        <td class="text-muted">${ds.units || '--'}</td>
+        <td class="mono text-muted min-cell">--</td>
+        <td class="mono text-muted max-cell">--</td>`;
       tbody.appendChild(tr);
       this._cells[i] = {
         value: tr.querySelector('.value-cell'),
@@ -67,9 +67,10 @@ export class DataGridWidget extends WidgetBase {
         stat.max = Math.max(stat.max, v);
         const cell = this._cells[i];
         if (cell) {
-          cell.value.textContent = formatValue(v, stat.min, stat.max);
-          cell.min.textContent = isFinite(stat.min) ? formatValue(stat.min) : '—';
-          cell.max.textContent = isFinite(stat.max) ? formatValue(stat.max) : '—';
+          const decimals = Number.isInteger(ds.decimals) ? ds.decimals : ds.precision;
+          cell.value.textContent = formatValue(v, stat.min, stat.max, decimals);
+          cell.min.textContent = isFinite(stat.min) ? formatValue(stat.min, undefined, undefined, decimals) : '--';
+          cell.max.textContent = isFinite(stat.max) ? formatValue(stat.max, undefined, undefined, decimals) : '--';
         }
       });
     });
@@ -80,9 +81,9 @@ export class DataGridWidget extends WidgetBase {
     this._datasets.forEach((_, i) => {
       this._values[i] = { current: 0, min: Infinity, max: -Infinity };
       if (this._cells[i]) {
-        this._cells[i].value.textContent = '—';
-        this._cells[i].min.textContent = '—';
-        this._cells[i].max.textContent = '—';
+        this._cells[i].value.textContent = '--';
+        this._cells[i].min.textContent = '--';
+        this._cells[i].max.textContent = '--';
       }
     });
   }

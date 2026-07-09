@@ -22,7 +22,11 @@ export function getDatasetColorAlpha(index, alpha = 0.2) {
 }
 
 // ── Number Formatting ──
-export function formatValue(val, min = 0, max = 100) {
+export function formatValue(val, min = 0, max = 100, decimalsOverride = undefined) {
+  if (!Number.isFinite(val)) return '--';
+  if (Number.isInteger(decimalsOverride) && decimalsOverride >= 0) {
+    return val.toFixed(Math.min(decimalsOverride, 12));
+  }
   const abs = Math.abs(val);
   let decimals;
   if (abs >= 1e4) decimals = 0;

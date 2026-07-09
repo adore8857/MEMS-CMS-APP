@@ -1,7 +1,7 @@
 /**
  * GaugeWidget — Circular gauge drawn on Canvas
  */
-import { WidgetBase } from './WidgetBase.js';
+import { WidgetBase } from './WidgetBase.js?v=widget-export-20260708-1';
 import { eventBus } from '../core/EventBus.js';
 import { getDatasetColor, formatValue } from '../utils/helpers.js';
 import { datasetFromFrame } from './datasetSource.js';
@@ -22,6 +22,8 @@ export class GaugeWidget extends WidgetBase {
     this._labelEl = null;
     this._raf = null;
     this._dirty = false;
+    this._history = [];
+    this._rawHistory = [];
   }
 
   _theme(name, fallback = '') {
@@ -49,6 +51,7 @@ export class GaugeWidget extends WidgetBase {
       const ds = datasetFromFrame(frame, this._datasetRef, this._datasetIndex);
       if (!ds) return;
       const v = typeof ds.value === 'number' ? ds.value : parseFloat(ds.value) || 0;
+      this._appendHistory(frame, v);
       if (v !== this._value) {
         this._value = v;
         this._dirty = true;
@@ -58,6 +61,47 @@ export class GaugeWidget extends WidgetBase {
         });
       }
     });
+  }
+
+  _supportsExport() { return true; }
+
+  _appendHistory(frame, value) {
+    const timestamp = new Date(frame.timestamp || Date.now()).toISOString();
+    this._history.push({ timestamp, value });
+    this._rawHistory.push({
+      timestamp,
+      title: frame.title || this.config.title || '',
+      sourceId: frame.sourceId || '',
+      topic: frame.topic || '',
+      raw: frame.raw || ''
+    });
+    const limit = 5000;
+    if (this._history.length > limit) this._history.splice(0, this._history.length - limit);
+    if (this._rawHistory.length > limit) this._rawHistory.splice(0, this._rawHistory.length - limit);
+  }
+
+  _exportParsedData() {
+    if (!this._history.length) return null;
+    const title = this.config.title || 'Gauge';
+    const valueHeader = this._units ? `${title} (${this._units})` : title;
+    return {
+      filename: `${this._safeFileName(title)}_parsed.csv`,
+      rows: [
+        ['timestamp', valueHeader],
+        ...this._history.map((item) => [item.timestamp, item.value])
+      ]
+    };
+  }
+
+  _exportRawFrames() {
+    if (!this._rawHistory.length) return null;
+    return {
+      filename: `${this._safeFileName(this.config.title)}_raw_frames.csv`,
+      rows: [
+        ['timestamp', 'sourceId', 'topic', 'frameTitle', 'raw'],
+        ...this._rawHistory.map((item) => [item.timestamp, item.sourceId, item.topic, item.title, item.raw])
+      ]
+    };
   }
 
   _drawGauge(value) {
@@ -177,6 +221,8 @@ export class GaugeWidget extends WidgetBase {
 
   reset() {
     this._value = 0;
+    this._history = [];
+    this._rawHistory = [];
     this._drawGauge(0);
     if (this._valueEl) this._valueEl.textContent = '0' + (this._units ? ` ${this._units}` : '');
   }

@@ -1,10 +1,10 @@
 /**
  * PlotWidget - Real-time line chart using Chart.js
  */
-import { WidgetBase } from './WidgetBase.js';
+import { WidgetBase } from './WidgetBase.js?v=widget-export-20260708-1';
 import { eventBus } from '../core/EventBus.js';
 import { appState } from '../core/AppState.js';
-import { getDatasetColor, getDatasetColorAlpha } from '../utils/helpers.js';
+import { formatValue, getDatasetColor, getDatasetColorAlpha } from '../utils/helpers.js';
 import { datasetFromFrame } from './datasetSource.js';
 
 export class PlotWidget extends WidgetBase {
@@ -16,6 +16,7 @@ export class PlotWidget extends WidgetBase {
       this._datasetIndices.map((index, i) => ({ index, sourceId: config.datasetSourceIds?.[i] }));
     this._datasetLabels = config.datasetLabels || ['Channel 1'];
     this._datasetUnits = config.datasetUnits || this._datasetIndices.map(() => '');
+    this._datasetDecimals = config.datasetDecimals || this._datasetIndices.map(() => undefined);
     this._maxPoints = appState.points;
     this._data = this._datasetIndices.map(() => []);
     this._labels = [];
@@ -31,6 +32,7 @@ export class PlotWidget extends WidgetBase {
     this._middlePanState = null;
     this._paused = false;
     this._lastFrameDatasets = [];
+    this._rawHistory = [];
     this._chartRetryTimer = null;
     this._frameHandler = (frame) => this._onFrame(frame);
     this._middlePanMoveHandler = (event) => this._handleMiddlePanMove(event);
@@ -149,7 +151,12 @@ export class PlotWidget extends WidgetBase {
               title: (items) => items.length ? `${xTitle}: ${items[0].label}` : '',
               label: (context) => {
                 const unit = this._datasetUnits[context.datasetIndex] || '';
-                return `${context.dataset.label}: ${context.formattedValue}${unit ? ` ${unit}` : ''}`;
+                const value = Number(context.parsed?.y);
+                const decimals = this._datasetDecimals[context.datasetIndex];
+                const formatted = Number.isFinite(value)
+                  ? formatValue(value, undefined, undefined, decimals)
+                  : context.formattedValue;
+                return `${context.dataset.label}: ${formatted}${unit ? ` ${unit}` : ''}`;
               }
             }
           },
@@ -210,7 +217,11 @@ export class PlotWidget extends WidgetBase {
               color: tickColor,
               font: { size: 12, family: uiFont, weight: '500' },
               maxTicksLimit: 6,
-              padding: 8
+              padding: 8,
+              callback: (value) => {
+                const decimals = this._datasetDecimals.find((item) => Number.isInteger(item));
+                return formatValue(Number(value), undefined, undefined, decimals);
+              }
             },
             border: { color: axisColor, width: 1 }
           }
@@ -240,6 +251,8 @@ export class PlotWidget extends WidgetBase {
     this._unsubscribe = eventBus.on('frame:received', this._frameHandler);
   }
 
+  _supportsExport() { return true; }
+
   _onFrame(frame) {
     if (this._paused || this._destroyed) return;
     const maxPts = appState.points;
@@ -252,6 +265,8 @@ export class PlotWidget extends WidgetBase {
     // samples in this chart. This is essential when several UDP sources reuse
     // the same local dataset indexes.
     if (!receivedDatasets.some(Boolean)) return;
+
+    this._appendRawHistory(frame);
 
     receivedDatasets.forEach((ds, i) => {
       this._lastFrameDatasets[i] = ds || null;
@@ -280,9 +295,53 @@ export class PlotWidget extends WidgetBase {
     this._scheduleChartUpdate();
   }
 
+  _appendRawHistory(frame) {
+    this._rawHistory.push({
+      timestamp: new Date(frame.timestamp || Date.now()).toISOString(),
+      title: frame.title || this.config.title || '',
+      sourceId: frame.sourceId || '',
+      topic: frame.topic || '',
+      raw: frame.raw || ''
+    });
+    const limit = Math.max(1000, appState.points * 4);
+    if (this._rawHistory.length > limit) this._rawHistory.splice(0, this._rawHistory.length - limit);
+  }
+
+  _exportParsedData() {
+    const maxLen = Math.max(0, ...this._data.map((series) => series.length));
+    if (!maxLen) return null;
+    const header = ['sample', ...this._datasetLabels.map((label, index) => {
+      const unit = this._datasetUnits[index];
+      return unit ? `${label} (${unit})` : label;
+    })];
+    const rows = [header];
+    for (let rowIndex = 0; rowIndex < maxLen; rowIndex += 1) {
+      rows.push([
+        this._labels[rowIndex] ?? rowIndex,
+        ...this._data.map((series) => series[rowIndex] ?? '')
+      ]);
+    }
+    return {
+      filename: `${this._safeFileName(this.config.title)}_parsed.csv`,
+      rows
+    };
+  }
+
+  _exportRawFrames() {
+    if (!this._rawHistory.length) return null;
+    return {
+      filename: `${this._safeFileName(this.config.title)}_raw_frames.csv`,
+      rows: [
+        ['timestamp', 'sourceId', 'topic', 'frameTitle', 'raw'],
+        ...this._rawHistory.map((item) => [item.timestamp, item.sourceId, item.topic, item.title, item.raw])
+      ]
+    };
+  }
+
   reset() {
     this._data.forEach((series) => { series.length = 0; });
     this._lastFrameDatasets = [];
+    this._rawHistory = [];
     this._labels.length = 0;
     this._nextSamplePoint = 0;
     if (this._chart) {

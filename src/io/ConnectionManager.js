@@ -4,10 +4,10 @@
 import { eventBus } from '../core/EventBus.js';
 import { appState, BusType, ConnectionState, OperationMode } from '../core/AppState.js';
 import { busLabel, t } from '../core/i18n.js';
-import { FrameParser } from '../core/FrameParser.js?v=multi-mqtt-20260618-1';
-import { SerialDriver } from './SerialDriver.js';
+import { FrameParser } from '../core/FrameParser.js?v=full-frame-parser-20260708-1';
+import { SerialDriver } from './SerialDriver.js?v=protocol-editor-v6-20260706-1';
 import { WebSocketDriver } from './WebSocketDriver.js';
-import { MqttDriver } from './MqttDriver.js?v=multi-mqtt-20260618-1';
+import { MqttDriver } from './MqttDriver.js?v=electron-mqtt-tcp-20260709-1';
 import { UdpDriver } from './UdpDriver.js?v=multi-udp-gateway-routing-20260619-2';
 
 function mqttTopicMatches(filter, topic) {
@@ -33,6 +33,14 @@ export class ConnectionManager {
       if (appState.busType !== BusType.UDP || !this._driver?.sendControl) return;
       this._driver.sendControl(command).catch((error) => {
         eventBus.emit('gateway:status', { type: 'gateway.error', message: error.message || String(error) });
+      });
+    });
+    this._projectCommandUnsubscribe = eventBus.on('project:sendCommand', (message = {}) => {
+      const data = message?.data instanceof Uint8Array
+        ? message.data
+        : (message?.data instanceof ArrayBuffer ? new Uint8Array(message.data) : message?.data);
+      this.sendData(data).catch((error) => {
+        eventBus.emit('toast', { type: 'error', message: t('messages.sendFailed', { error: error?.message || error }) });
       });
     });
     this._errorHandler = (err) => {
@@ -240,6 +248,7 @@ export class ConnectionManager {
 
   destroy() {
     this._gatewayCommandUnsubscribe?.();
+    this._projectCommandUnsubscribe?.();
     this.disconnect();
     this._parser.destroy();
     this._mqttParsers.forEach((parser) => parser.destroy());

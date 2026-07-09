@@ -34,6 +34,43 @@ function buildBrokerUrl(cfg) {
   return `${scheme}://${host}:${port}${normalizedPath}`;
 }
 
+function buildTcpBrokerUrl(cfg) {
+  const rawUrl = (cfg.brokerUrl || '').trim();
+  if (rawUrl) {
+    if (rawUrl.startsWith('mqtt://') || rawUrl.startsWith('mqtts://')) return rawUrl;
+    if (rawUrl.startsWith('tcp://')) return `mqtt://${rawUrl.slice('tcp://'.length)}`;
+    if (rawUrl.startsWith('tls://')) return `mqtts://${rawUrl.slice('tls://'.length)}`;
+  }
+
+  const host = (cfg.host || '').trim();
+  if (!host) {
+    throw new Error('MQTT host is required.');
+  }
+
+  const scheme = cfg.useSSL ? 'mqtts' : 'mqtt';
+  const port = Number(cfg.port) || (cfg.useSSL ? 8883 : 1883);
+  return `${scheme}://${host}:${port}`;
+}
+
+function base64ToBytes(text) {
+  const binary = atob(String(text || ''));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function bytesToBase64(data) {
+  const bytes = data instanceof Uint8Array ? data : messageToBytes(data);
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
 function messageToBytes(message) {
   if (typeof message === 'string') return new TextEncoder().encode(message);
   if (message instanceof ArrayBuffer) return new Uint8Array(message);
@@ -86,7 +123,7 @@ function sourceConnectionConfig(baseCfg, source = {}) {
   const direct = {};
   [
     'version', 'mode', 'keepalive', 'host', 'port', 'path', 'username', 'password',
-    'clientId', 'useSSL', 'brokerUrl', 'clean', 'retain', 'qos'
+    'clientId', 'useSSL', 'brokerUrl', 'clean', 'retain', 'qos', 'transport'
   ].forEach((key) => {
     if (source[key] !== undefined) direct[key] = source[key];
   });
@@ -94,12 +131,14 @@ function sourceConnectionConfig(baseCfg, source = {}) {
 }
 
 function connectionKey(cfg) {
+  const transport = cfg.transport || 'websocket';
   return [
+    transport,
     cfg.brokerUrl || '',
-    cfg.useSSL ? 'wss' : 'ws',
+    transport === 'tcp' ? (cfg.useSSL ? 'mqtts' : 'mqtt') : (cfg.useSSL ? 'wss' : 'ws'),
     cfg.host || '',
     Number(cfg.port) || '',
-    cfg.path || '/mqtt',
+    transport === 'tcp' ? '' : (cfg.path || '/mqtt'),
     cfg.username || ''
   ].join('|');
 }
@@ -161,6 +200,9 @@ export class MqttDriver {
     this._clients = [];
     this._callbacks = { data: [], error: [], close: [] };
     this._subscriptions = [];
+    this._desktopMqttUnsubscribers = [];
+    this._sessionId = '';
+    this._transport = 'websocket';
   }
 
   on(event, cb) { this._callbacks[event]?.push(cb); }
@@ -170,12 +212,64 @@ export class MqttDriver {
   }
   _emit(event, data) { this._callbacks[event]?.forEach(cb => cb(data)); }
 
-  async connect() {
-    const cfg = appState.mqttConfig;
+  _clearDesktopMqttListeners() {
+    this._desktopMqttUnsubscribers.forEach((unsubscribe) => {
+      try { unsubscribe?.(); } catch (_error) { /* ignore */ }
+    });
+    this._desktopMqttUnsubscribers = [];
+  }
 
-    if (!window.mqtt) {
-      throw new Error('MQTT library not loaded in browser.');
+  async _connectDesktopTcp(cfg, plans) {
+    const api = window.memsCmsDesktop?.mqtt;
+    if (!api) {
+      throw new Error('MQTT TCP direct connection is only available in the desktop app.');
     }
+
+    this._transport = 'tcp';
+    this._sessionId = `mqtt_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    this._subscriptions = dedupeSubscriptions(plans.flatMap((plan) => plan.subscriptions || []));
+    this._clearDesktopMqttListeners();
+
+    this._desktopMqttUnsubscribers.push(api.onData((message) => {
+      if (!message || message.sessionId !== this._sessionId) return;
+      const subscription = (message.subscriptions || []).find((item) => mqttTopicMatches(item.topic, message.topic)) || { topic: message.topic };
+      this._emit('data', {
+        payload: base64ToBytes(message.payloadBase64),
+        topic: message.topic,
+        sourceId: subscription.sourceId,
+        subscription,
+        brokerUrl: message.brokerUrl
+      });
+    }));
+    this._desktopMqttUnsubscribers.push(api.onError((message) => {
+      if (!message || message.sessionId !== this._sessionId) return;
+      this._emit('error', new Error(message.message || 'MQTT TCP error'));
+    }));
+    this._desktopMqttUnsubscribers.push(api.onClose((message) => {
+      if (!message || message.sessionId !== this._sessionId) return;
+      this._emit('close');
+    }));
+
+    const tcpPlans = plans.map((plan) => ({
+      cfg: {
+        ...plan.cfg,
+        brokerUrl: buildTcpBrokerUrl(plan.cfg)
+      },
+      subscriptions: plan.subscriptions || []
+    }));
+    await api.connect({ sessionId: this._sessionId, plans: tcpPlans });
+  }
+
+  async connect() {
+    const cfg = window.memsCmsDesktop?.mqtt
+      ? {
+        ...appState.mqttConfig,
+        transport: 'tcp',
+        useSSL: !!appState.mqttConfig.useSSL,
+        port: Number(appState.mqttConfig.port) || (appState.mqttConfig.useSSL ? 8883 : 1883),
+        brokerUrl: ''
+      }
+      : { ...appState.mqttConfig, transport: 'websocket' };
 
     const connectPlan = (plan, planIndex) => new Promise((resolve, reject) => {
       let settled = false;
@@ -288,17 +382,49 @@ export class MqttDriver {
         throw new Error('MQTT topic is required for subscribe mode.');
       }
     }
+
+    if (cfg.transport === 'tcp') {
+      await this._connectDesktopTcp(cfg, plans);
+      return;
+    }
+
+    this._transport = 'websocket';
+    if (!window.mqtt) {
+      throw new Error('MQTT library not loaded in browser.');
+    }
+
     await Promise.all(plans.map((plan, index) => connectPlan(plan, index)));
   }
 
   async send(data) {
+    const cfg = window.memsCmsDesktop?.mqtt
+      ? {
+        ...appState.mqttConfig,
+        transport: 'tcp',
+        useSSL: !!appState.mqttConfig.useSSL,
+        port: Number(appState.mqttConfig.port) || (appState.mqttConfig.useSSL ? 8883 : 1883)
+      }
+      : appState.mqttConfig;
+    const topic = (cfg.publishTopic || cfg.topic || '').trim();
+    if (!topic) throw new Error('MQTT topic is required');
+
+    if (this._transport === 'tcp') {
+      const api = window.memsCmsDesktop?.mqtt;
+      if (!api || !this._sessionId) throw new Error('MQTT TCP not connected');
+      await api.publish({
+        sessionId: this._sessionId,
+        topic,
+        payloadBase64: bytesToBase64(data),
+        qos: Number(cfg.qos) || 0,
+        retain: !!cfg.retain
+      });
+      return;
+    }
+
     const client = this._clients.find((item) => item?.connected) || this._client;
     if (!client || !client.connected) {
       throw new Error('MQTT not connected');
     }
-    const cfg = appState.mqttConfig;
-    const topic = (cfg.publishTopic || cfg.topic || '').trim();
-    if (!topic) throw new Error('MQTT topic is required');
     client.publish(topic, data, {
       qos: Number(cfg.qos) || 0,
       retain: !!cfg.retain
@@ -306,9 +432,15 @@ export class MqttDriver {
   }
 
   async disconnect() {
+    this._clearDesktopMqttListeners();
+    if (this._transport === 'tcp' && this._sessionId) {
+      try { await window.memsCmsDesktop?.mqtt?.disconnect(this._sessionId); } catch (_error) { /* ignore */ }
+    }
     this._clients.forEach((client) => client?.end(true));
     this._clients = [];
     this._client = null;
     this._subscriptions = [];
+    this._sessionId = '';
+    this._transport = 'websocket';
   }
 }
